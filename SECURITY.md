@@ -17,7 +17,8 @@ You'll get an acknowledgement within 72 hours, and an assessment within 7 days.
 
 | Version | Supported |
 |---|---|
-| Unreleased (main) | ✅ |
+| 0.1.x (latest release) | ✅ |
+| main | ✅ |
 
 ## Threat model
 
