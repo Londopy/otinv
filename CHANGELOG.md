@@ -8,6 +8,8 @@ what appears on its GitHub release page. Validated in CI by
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-19
+
 ### Added
 
 - Malcolm exports as input: the zeek documents from Malcolm's `/mapi/document` API, saved as JSON or NDJSON, give the same report as the logs, with warnings for incomplete or overlapping pages.
@@ -40,5 +42,6 @@ what appears on its GitHub release page. Validated in CI by
 - A Capture workflow that runs otinv through real Zeek and the ICSNPP parsers on a generated lab capture.
 - Every release lists all its files in `SHA256SUMS.txt` and offers each download as a web-seeded torrent and magnet link.
 
-[Unreleased]: https://github.com/Londopy/otinv/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Londopy/otinv/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/Londopy/otinv/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Londopy/otinv/releases/tag/v0.1.0
