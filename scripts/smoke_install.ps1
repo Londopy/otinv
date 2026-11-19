@@ -42,11 +42,11 @@ function Test-OnPath([string]$Expected) {
         if (-not $cmd) { 'not found'; return }
         "$($cmd.Source)|$(otinv --version)"
     } -args (Get-FreshPath)
-    $source, $version = "$out" -split '\|', 2
+    $source, $got = "$out" -split '\|', 2
     if ($source -eq 'not found') { Fail "otinv isn't on the PATH after install" }
     if ($source -notlike "$Expected*") { Fail "PATH finds $source, expected one in $Expected" }
-    if ($version -ne "otinv $Version") { Fail "otinv --version says '$version', expected 'otinv $Version'" }
-    Write-Host "  PATH ok: $source -> $version"
+    if ($got -ne "otinv $Version") { Fail "otinv --version says '$got', expected 'otinv $Version'" }
+    Write-Host "  PATH ok: $source -> $got"
 }
 
 function Wait-Gone([string]$Path) {
@@ -105,8 +105,8 @@ Write-Host '  uninstall ok'
 Write-Host '== MSI, all users'
 Invoke-Msi @('/i', $msi, 'ALLUSERS=2', 'MSIINSTALLPERUSER=') "$logs\msi-machine.log"
 if (-not (Test-Path "$MachineDir\otinv.exe")) { Fail "the all-users MSI didn't install $MachineDir\otinv.exe" }
-$version = & "$MachineDir\otinv.exe" --version
-if ($version -ne "otinv $Version") { Fail "installed otinv says '$version'" }
+$got = & "$MachineDir\otinv.exe" --version
+if ($got -ne "otinv $Version") { Fail "installed otinv says '$got'" }
 Invoke-Msi @('/x', $msi, 'ALLUSERS=2', 'MSIINSTALLPERUSER=') "$logs\msi-machine-uninstall.log"
 Wait-Gone $MachineDir
 if (Get-PathHas $MachineDir) { Fail 'all-users MSI uninstall left otinv on the PATH' }
