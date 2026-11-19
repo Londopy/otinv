@@ -219,9 +219,31 @@ jobs:
           path: out/
           retention-days: 1
 
+  # the installers are installed, run and uninstalled before anything is
+  # published, so a broken setup.exe or MSI never reaches a release
+  smoke:
+    name: Install and uninstall (x64)
+    needs: [validate, build]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.validate.outputs.tag }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-x64
+          path: installers
+
+      - name: Smoke test
+        shell: pwsh
+        env:
+          TAG: ${{ needs.validate.outputs.tag }}
+        run: scripts/smoke_install.ps1 -Dir installers -Version ($env:TAG.TrimStart('v'))
+
   release:
     name: Publish release
-    needs: [validate, build, build-linux]
+    needs: [validate, build, build-linux, smoke]
     runs-on: windows-latest
     permissions:
       contents: write   # create the release and upload assets; the only job that writes

@@ -1,0 +1,37 @@
+name: Installers
+
+# runs the installer smoke test against a release that's already published,
+# for checking an old release or a new Windows runner image. new releases run
+# the same test in release.yml before they're published.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to test, like v0.1.0
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Install and uninstall (x64)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download the installers
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          gh release download $env:TAG -D installers -p "*-setup-x64.exe" -p "*-x64.msi"
+          if ($LASTEXITCODE -ne 0) { throw "couldn't download $env:TAG" }
+
+      - name: Smoke test
+        shell: pwsh
+        env:
+          TAG: ${{ inputs.tag }}
+        run: scripts/smoke_install.ps1 -Dir installers -Version ($env:TAG.TrimStart('v'))
