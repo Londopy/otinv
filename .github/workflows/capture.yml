@@ -41,7 +41,7 @@ jobs:
       # cache layers in GitHub's cache: compiling the ICSNPP parsers is the
       # slow part, and it only changes when the Dockerfile does
       - name: Build the zeek image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: docker/zeek-icsnpp
           tags: otinv-zeek:local
