@@ -166,6 +166,12 @@ class Modbus:
         req = bytes([16]) + struct.pack("!HHB", 900, 2, 4) + struct.pack("!HH", 1, 2)
         self.tx(req, bytes([0x90, 0x02]))  # exception: illegal data address
 
+    def read_device_identification(self, objects):
+        """Function 43, MEI type 14, basic objects: what ICSNPP logs as identity."""
+        body = b"".join(bytes([oid, len(v)]) + v.encode() for oid, v in objects)
+        resp = bytes([0x2B, 0x0E, 0x01, 0x01, 0x00, 0x00, len(objects)]) + body
+        self.tx(bytes([0x2B, 0x0E, 0x01, 0x00]), resp)
+
 
 # ---- DNP3 --------------------------------------------------------------------
 
@@ -316,6 +322,10 @@ def build():
     f.c2s(b"QUIT\r\n")
     f.s2c(b"221 Bye\r\n")
     f.close()
+    # the laptop asks PLC2 who it is (Modbus Read Device Identification)
+    ident = Modbus(Tcp(p, 2550.0, "ews", "plc2", 502))
+    ident.read_device_identification([(0, "AutomationDirect"), (1, "C0-12DD1E-D"), (2, "3.41")])
+    ident.c.close()
     tn = Tcp(p, 2600.0, "ews", "plc2", 23)
     tn.s2c(b"login: ")
     tn.c2s(b"admin\r\n")

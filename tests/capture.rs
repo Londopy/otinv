@@ -84,6 +84,7 @@ fn capture_through_real_zeek() {
         "ftp.log",
         "http.log",
         "dhcp.log",
+        "modbus_read_device_identification.log",
     ] {
         assert!(logs.contains(need), "zeek didn't write {need}");
     }
@@ -115,6 +116,17 @@ fn capture_through_real_zeek() {
             .get("model")
             .is_some_and(|m| m.contains("1769-L33ER")),
         "EtherNet/IP identity"
+    );
+    let plc2 = run.asset("10.10.1.11").unwrap();
+    eprintln!("plc2 identity: {:?}", plc2.identity);
+    assert_eq!(
+        plc2.identity.get("vendor").map(String::as_str),
+        Some("AutomationDirect"),
+        "Modbus identity"
+    );
+    assert_eq!(
+        plc2.identity.get("firmware").map(String::as_str),
+        Some("3.41")
     );
 
     let got: BTreeSet<(String, String)> = run
