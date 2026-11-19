@@ -122,7 +122,14 @@ fn capture_through_real_zeek() {
         .iter()
         .map(|f| (f.rule.clone(), f.host.clone()))
         .collect();
-    eprintln!("findings: {got:?}");
+    for f in &run.findings {
+        let what: Vec<String> = f
+            .evidence
+            .iter()
+            .map(|e| format!("{}:{} {}", e.file, e.line, e.what))
+            .collect();
+        eprintln!("finding {} on {}: {what:?}", f.rule, f.host);
+    }
     let want: BTreeSet<(String, String)> = [
         ("OT-INTERNET", "10.10.1.10"),
         ("REMOTE-ACCESS", "10.10.2.20"),

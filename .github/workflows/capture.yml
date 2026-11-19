@@ -57,3 +57,13 @@ jobs:
         env:
           OTINV_CAPTURE_TEST: "1"
         run: cargo test --test capture -- --nocapture
+
+      # the capture is synthetic, so zeek's raw logs are safe to keep, and
+      # they are what to read when the test disagrees with real zeek
+      - name: Keep zeek's logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zeek-logs
+          path: /tmp/otinv-capture-test/report/zeek-logs
+          if-no-files-found: ignore
