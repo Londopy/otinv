@@ -1,5 +1,3 @@
-// logs in, Run out; Run in and out of a .londopy file.
-
 use crate::analyze;
 use crate::checks;
 use crate::config::{Rules, Site};

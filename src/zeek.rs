@@ -167,7 +167,6 @@ impl Record {
     }
 }
 
-/// One log file.
 #[derive(Debug, Clone)]
 pub struct Log {
     /// Log type, e.g. "conn", "modbus", "cip_identity".
@@ -305,7 +304,6 @@ pub fn parse(file_name: &str, mut reader: impl BufRead) -> Result<Log> {
     let mut records = Vec::new();
     let mut skipped = 0;
 
-    // tsv header state
     let mut sep = "\t".to_string();
     let mut set_sep = ",".to_string();
     let mut unset = "-".to_string();

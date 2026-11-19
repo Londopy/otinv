@@ -15,7 +15,6 @@ pub struct Map {
 }
 
 impl Map {
-    /// A fresh map for these runs.
     pub fn build(runs: &[&Run]) -> Self {
         Self::extend(&Map::default(), runs)
     }

@@ -49,7 +49,6 @@ struct Asset {
     name: String,
 }
 
-/// `otinv update [--check] [--yes]`.
 pub fn run(check: bool, yes: bool) -> Result<()> {
     let current = env!("CARGO_PKG_VERSION");
     let agent = agent();
@@ -321,7 +320,6 @@ fn cmp_prerelease(a: &str, b: &str) -> Ordering {
     }
 }
 
-/// Lowercase hex of the SHA-256 of `bytes`.
 fn sha256_hex(bytes: &[u8]) -> String {
     const DIGITS: &[u8; 16] = b"0123456789abcdef";
     let digest = Sha256::digest(bytes);
@@ -492,7 +490,6 @@ fn dir_is_writable(dir: &Path) -> bool {
     }
 }
 
-// "<exe>.old", "<exe>.new"
 fn with_suffix(exe: &Path, suffix: &str) -> PathBuf {
     let mut s = exe.as_os_str().to_os_string();
     s.push(suffix);

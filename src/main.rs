@@ -1,5 +1,3 @@
-// otinv command line.
-
 use anyhow::{bail, Context, Result};
 use clap::{Args, Parser, Subcommand};
 use otinv::config::{Rules, Site, DEFAULT_RULES, SITE_TEMPLATE};

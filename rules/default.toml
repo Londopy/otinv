@@ -8,7 +8,6 @@
 
 schema = 1
 
-# ---------------------------------------------------------------------------
 # Protocols
 #
 # A connection is matched by zeek's `service` field first, then by its
@@ -23,7 +22,6 @@ schema = 1
 # from the internet (SSH inside the plant is normal). `outbound` marks tools
 # that dial out to a relay (TeamViewer, AnyDesk): a control-system computer
 # keeping such a session is flagged too.
-# ---------------------------------------------------------------------------
 
 [[protocol]]
 name = "modbus"
@@ -252,14 +250,12 @@ kinds = ["infrastructure"]
 udp = [123]
 services = ["ntp"]
 
-# ---------------------------------------------------------------------------
 # Roles
 #
 # Controller (PLC/RTU): answers an `ot` protocol.
 # Engineering workstation: sends any of the functions below, uses an
 #   `engineering` protocol, or opens a `management` session to a controller.
 # HMI/SCADA: starts `ot` conversations and isn't an engineering workstation.
-# ---------------------------------------------------------------------------
 
 [roles]
 # names as zeek writes them in modbus.log / dnp3.log. 90 (0x5A) is
@@ -277,9 +273,7 @@ engineering_dnp3_functions = [
   "ABORT_FILE",
 ]
 
-# ---------------------------------------------------------------------------
 # What counts as a command that changes something
-# ---------------------------------------------------------------------------
 
 [writes]
 # Modbus function codes 5, 6, 15, 16 (plus 21, 22, 23, which also write),
@@ -297,7 +291,6 @@ dnp3 = ["SELECT", "OPERATE", "DIRECT_OPERATE", "DIRECT_OPERATE_NR"]
 # flagged; the HMI that polls all day is not.
 min_polls = 10
 
-# ---------------------------------------------------------------------------
 # Findings
 #
 # `check` picks the built-in test; everything else is yours to tune. The text
@@ -305,7 +298,6 @@ min_polls = 10
 # `cpg` names the CISA Cross-Sector Cybersecurity Performance Goals 2.0
 # (December 2025) the finding relates to, by number and title as CISA
 # publishes them: https://www.cisa.gov/cybersecurity-performance-goals-2-0-cpg-2-0
-# ---------------------------------------------------------------------------
 
 [[rule]]
 id = "OT-INTERNET"
