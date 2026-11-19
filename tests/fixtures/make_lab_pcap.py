@@ -258,18 +258,25 @@ def build():
     plc1 = Modbus(Tcp(p, 0.0, "hmi", "plc1", 502))
     plc2 = Modbus(Tcp(p, 0.5, "hmi", "plc2", 502))
     rtu = Tcp(p, 1.0, "hmi", "rtu", 20000)
+    # packets on one connection must be built in time order, or their sequence
+    # numbers run backwards and zeek drops the later ones as retransmissions
+    crob = bytes([0x0C, 0x01, 0x17, 0x01, 0x00, 0x03, 0x01]) + struct.pack("<II", 100, 100) + b"\0"
+    seq = 0
     for i in range(12):
+        if i == 6:
+            plc1.c.t = BASE + 1800
+            plc1.write_register()  # the operator's setpoint change: expected
         plc1.c.t = BASE + i * 300 + 1
         plc1.read_holding()
         plc2.c.t = BASE + i * 300 + 3
         plc2.read_coils()
         rtu.t = BASE + i * 300 + 6
-        dnp3_tx(rtu, 0x01, bytes([0x3C, 0x01, 0x06]), seq=i % 16)  # READ class 0
-    plc1.c.t = BASE + 1800
-    plc1.write_register()  # the operator's setpoint change: expected
-    rtu.t = BASE + 1810
-    crob = bytes([0x0C, 0x01, 0x17, 0x01, 0x00, 0x03, 0x01]) + struct.pack("<II", 100, 100) + b"\0"
-    dnp3_tx(rtu, 0x05, crob, seq=12)  # DIRECT_OPERATE a pump: expected
+        dnp3_tx(rtu, 0x01, bytes([0x3C, 0x01, 0x06]), seq=seq % 16)  # READ class 0
+        seq += 1
+        if i == 6:
+            rtu.t = BASE + 1810
+            dnp3_tx(rtu, 0x05, crob, seq=seq % 16)  # DIRECT_OPERATE a pump: expected
+            seq += 1
     for c in (plc1.c, plc2.c, rtu):
         c.t = BASE + 3590
         c.close()
