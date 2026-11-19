@@ -1,0 +1,384 @@
+# otinv rules: the built-in defaults.
+#
+# Print this file with `otinv rules > my-rules.toml`, edit it, and pass it back
+# with `--rules my-rules.toml`. Your file replaces this one completely.
+#
+# Every check is deterministic: the same logs and the same rules always give
+# the same findings, and every finding lists the log lines it came from.
+
+schema = 1
+
+# ---------------------------------------------------------------------------
+# Protocols
+#
+# A connection is matched by zeek's `service` field first, then by its
+# responder port. `kinds` says what the protocol means to otinv:
+#   ot              industrial control traffic (marks controllers and HMIs)
+#   engineering     programming / configuration tools for controllers
+#   remote_access   remote desktop and screen sharing
+#   management      logins and web pages used to configure devices
+#   infrastructure  DNS, DHCP, NTP
+#   cleartext_login protocols whose logins are always readable on the wire
+# `outside_only` on a remote_access protocol flags it only when it is reached
+# from the internet (SSH inside the plant is normal). `outbound` marks tools
+# that dial out to a relay (TeamViewer, AnyDesk): a control-system computer
+# keeping such a session is flagged too.
+# ---------------------------------------------------------------------------
+
+[[protocol]]
+name = "modbus"
+label = "Modbus"
+kinds = ["ot"]
+tcp = [502]
+services = ["modbus"]
+
+[[protocol]]
+name = "dnp3"
+label = "DNP3"
+kinds = ["ot"]
+tcp = [20000]
+udp = [20000]
+services = ["dnp3", "dnp3_tcp", "dnp3_udp"]
+
+[[protocol]]
+name = "enip"
+label = "EtherNet/IP"
+kinds = ["ot"]
+tcp = [44818]
+udp = [44818, 2222]
+services = ["enip", "cip", "cip_io"]
+
+[[protocol]]
+name = "s7comm"
+label = "Siemens S7"
+kinds = ["ot"]
+tcp = [102]
+services = ["s7comm", "s7comm_plus", "cotp"]
+
+[[protocol]]
+name = "bacnet"
+label = "BACnet"
+kinds = ["ot"]
+udp = [47808]
+services = ["bacnet"]
+
+[[protocol]]
+name = "iec104"
+label = "IEC 60870-5-104"
+kinds = ["ot"]
+tcp = [2404]
+services = ["iec104", "iec60870_5_104"]
+
+[[protocol]]
+name = "opcua"
+label = "OPC UA"
+kinds = ["ot"]
+tcp = [4840]
+services = ["opcua_binary", "opcua"]
+
+[[protocol]]
+name = "fins"
+label = "Omron FINS"
+kinds = ["ot"]
+tcp = [9600]
+udp = [9600]
+services = ["omron_fins", "fins"]
+
+[[protocol]]
+name = "ge-srtp"
+label = "GE SRTP"
+kinds = ["ot"]
+tcp = [18245]
+services = ["ge_srtp"]
+
+[[protocol]]
+name = "hart-ip"
+label = "HART-IP"
+kinds = ["ot"]
+tcp = [5094]
+udp = [5094]
+services = ["hart_ip"]
+
+[[protocol]]
+name = "roc-plus"
+label = "ROC Plus"
+kinds = ["ot"]
+tcp = [4000]
+services = ["roc_plus"]
+
+[[protocol]]
+name = "synchrophasor"
+label = "Synchrophasor (C37.118)"
+kinds = ["ot"]
+tcp = [4712]
+udp = [4713]
+services = ["synchrophasor"]
+
+[[protocol]]
+name = "c1222"
+label = "ANSI C12.22"
+kinds = ["ot"]
+tcp = [1153]
+udp = [1153]
+services = ["c1222"]
+
+[[protocol]]
+name = "bsap"
+label = "BSAP"
+kinds = ["ot"]
+services = ["bsap", "bsap_ip"]
+
+[[protocol]]
+name = "profinet"
+label = "PROFINET"
+kinds = ["ot"]
+udp = [34964]
+services = ["profinet", "profinet_io_cm", "profinet_dce_rpc"]
+
+[[protocol]]
+name = "codesys"
+label = "CODESYS programming"
+kinds = ["engineering"]
+tcp = [1217, 2455, 11740]
+udp = [1740, 1741, 1742, 1743]
+
+[[protocol]]
+name = "vnc"
+label = "VNC"
+kinds = ["remote_access"]
+tcp = [5900, 5901, 5902, 5903]
+services = ["rfb", "vnc"]
+
+[[protocol]]
+name = "rdp"
+label = "Remote Desktop (RDP)"
+kinds = ["remote_access"]
+tcp = [3389]
+udp = [3389]
+services = ["rdp"]
+
+[[protocol]]
+name = "teamviewer"
+label = "TeamViewer"
+kinds = ["remote_access"]
+outbound = true
+tcp = [5938]
+udp = [5938]
+
+[[protocol]]
+name = "anydesk"
+label = "AnyDesk"
+kinds = ["remote_access"]
+outbound = true
+tcp = [7070]
+
+[[protocol]]
+name = "radmin"
+label = "Radmin"
+kinds = ["remote_access"]
+tcp = [4899]
+
+[[protocol]]
+name = "pcanywhere"
+label = "pcAnywhere"
+kinds = ["remote_access"]
+tcp = [5631]
+udp = [5632]
+
+[[protocol]]
+name = "telnet"
+label = "Telnet"
+kinds = ["remote_access", "management", "cleartext_login"]
+tcp = [23]
+services = ["telnet"]
+
+[[protocol]]
+name = "ssh"
+label = "SSH"
+kinds = ["remote_access", "management"]
+outside_only = true
+tcp = [22]
+services = ["ssh"]
+
+[[protocol]]
+name = "ftp"
+label = "FTP"
+kinds = ["management"]
+tcp = [21]
+services = ["ftp"]
+
+[[protocol]]
+name = "http"
+label = "Web (HTTP)"
+kinds = ["management"]
+tcp = [80, 8080]
+services = ["http"]
+
+[[protocol]]
+name = "https"
+label = "Web (HTTPS)"
+kinds = ["management"]
+tcp = [443, 8443]
+services = ["ssl", "https"]
+
+[[protocol]]
+name = "snmp"
+label = "SNMP"
+# no kinds: network monitoring polls everything over SNMP, which says
+# nothing about who programs the controllers
+kinds = []
+udp = [161]
+services = ["snmp"]
+
+[[protocol]]
+name = "dns"
+label = "DNS"
+kinds = ["infrastructure"]
+tcp = [53]
+udp = [53]
+services = ["dns"]
+
+[[protocol]]
+name = "dhcp"
+label = "DHCP"
+kinds = ["infrastructure"]
+udp = [67, 68]
+services = ["dhcp"]
+
+[[protocol]]
+name = "ntp"
+label = "NTP (time)"
+kinds = ["infrastructure"]
+udp = [123]
+services = ["ntp"]
+
+# ---------------------------------------------------------------------------
+# Roles
+#
+# Controller (PLC/RTU): answers an `ot` protocol.
+# Engineering workstation: sends any of the functions below, uses an
+#   `engineering` protocol, or opens a `management` session to a controller.
+# HMI/SCADA: starts `ot` conversations and isn't an engineering workstation.
+# ---------------------------------------------------------------------------
+
+[roles]
+# names as zeek writes them in modbus.log / dnp3.log. 90 (0x5A) is
+# Schneider's UMAS programming channel: PROGRAM_UNITY in zeek 7.2 and later,
+# "unknown-90" before that.
+engineering_modbus_functions = [
+  "PROGRAM_484", "PROGRAM_584_984", "PROGRAM_584_984_2", "PROGRAM_884_U84",
+  "PROGRAM_CONCEPT", "PROGRAM_UNITY", "FIRMWARE_REPLACEMENT",
+  "unknown-90",
+]
+engineering_dnp3_functions = [
+  "COLD_RESTART", "WARM_RESTART", "INITIALIZE_DATA", "INITIALIZE_APPL",
+  "START_APPL", "STOP_APPL", "SAVE_CONFIG", "ACTIVATE_CONFIG",
+  "OPEN_FILE", "CLOSE_FILE", "DELETE_FILE", "GET_FILE_INFO", "AUTHENTICATE_FILE",
+  "ABORT_FILE",
+]
+
+# ---------------------------------------------------------------------------
+# What counts as a command that changes something
+# ---------------------------------------------------------------------------
+
+[writes]
+# Modbus function codes 5, 6, 15, 16 (plus 21, 22, 23, which also write),
+# by zeek's name and by number
+modbus = [
+  "WRITE_SINGLE_COIL", "WRITE_SINGLE_REGISTER", "WRITE_MULTIPLE_COILS",
+  "WRITE_MULTIPLE_REGISTERS", "WRITE_FILE_RECORD", "MASK_WRITE_REGISTER",
+  "READ_WRITE_MULTIPLE_REGISTERS",
+  "5", "6", "15", "16", "21", "22", "23",
+]
+dnp3 = ["SELECT", "OPERATE", "DIRECT_OPERATE", "DIRECT_OPERATE_NR"]
+# Who may send them, when site.toml has no expected_writers list: a computer
+# that polled the same controller (sent it other requests) at least this many
+# times. A rogue host that only writes, or writes after a couple of reads, is
+# flagged; the HMI that polls all day is not.
+min_polls = 10
+
+# ---------------------------------------------------------------------------
+# Findings
+#
+# `check` picks the built-in test; everything else is yours to tune. The text
+# is what a utility operator reads, so keep it plain.
+# `cpg` names the CISA Cross-Sector Cybersecurity Performance Goal the finding
+# relates to. TODO before release: check the wording against CPG 2.0.
+# ---------------------------------------------------------------------------
+
+[[rule]]
+id = "OT-INTERNET"
+check = "ot_internet"
+severity = "critical"
+title = "Control-system traffic crosses the internet"
+why = """Industrial protocols like Modbus and DNP3 have no passwords and no \
+encryption. Anyone on the internet who can reach a controller can read it and \
+change it."""
+action = """Remove the internet path to these devices. If a vendor or staff \
+member needs remote access, put it behind a VPN with multi-factor login, and \
+turn it off when it isn't in use."""
+cpg = "Limit OT connections to the public internet"
+
+[[rule]]
+id = "REMOTE-ACCESS"
+check = "remote_access"
+severity = "high"
+severity_internet = "critical"
+title = "Remote-control software can reach control-system computers"
+why = """Remote desktop and screen-sharing tools have been the way in for \
+several attacks on water systems. Whoever gets in sees exactly what your \
+operators see, and can click the same buttons."""
+action = """Turn off remote-access services nobody uses. For the ones you need, \
+require a VPN and multi-factor login, replace default or shared passwords, and \
+allow connections only from known addresses."""
+cpg = "No exploitable services on the internet; MFA for remote access"
+
+[[rule]]
+id = "CLEARTEXT-LOGIN"
+check = "cleartext_login"
+severity = "high"
+title = "Passwords are sent unprotected"
+why = """Telnet, FTP and plain web logins send the password as readable text, \
+so anyone who can see the network traffic can collect it. (otinv saw these \
+logins but did not keep the user names or passwords.)"""
+action = """Change the passwords that were used. Then switch these devices to a \
+protected method (SSH, SFTP or HTTPS), or turn the service off if nobody needs \
+it."""
+cpg = "Strong and agile encryption; change default passwords"
+
+[[rule]]
+id = "UNEXPECTED-WRITE"
+check = "unexpected_ot_write"
+severity = "high"
+title = "Control commands came from an unexpected computer"
+why = """Commands that change setpoints or switch equipment on and off should \
+only come from your SCADA/HMI. Commands from anywhere else could be \
+maintenance, a misconfiguration, or an intruder."""
+action = """Find out who used this computer at that time and why. If it was \
+planned work, add the computer to expected_writers in site.toml so it isn't \
+flagged again. If nobody knows, treat it as an incident and call your \
+incident-response contacts."""
+cpg = "Detect relevant threats; incident reporting"
+
+[[rule]]
+id = "NEW-DEVICE"
+check = "new_device"
+severity = "medium"
+title = "Devices appeared since the last report"
+why = """A device you don't know about is a device nobody is updating or \
+watching."""
+action = """Identify each new device and add it to your inventory, or take it \
+off the network."""
+cpg = "Asset inventory"
+
+[[rule]]
+id = "IT-OT-MIXING"
+check = "it_ot_mixing"
+severity = "medium"
+title = "Control-system devices reach the internet"
+why = """Control equipment that talks to the internet (web browsing, email, \
+updates, cloud services) gives malware a way in and a way to send data out."""
+action = """Block internet access from the control network at the firewall, \
+except for specific needs you have written down. Use a separate office \
+computer for email and browsing."""
+cpg = "Network segmentation"

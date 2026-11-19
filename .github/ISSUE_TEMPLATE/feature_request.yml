@@ -1,0 +1,20 @@
+name: Feature request
+description: A new check, protocol, output, or report wording
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Who reads or runs the report, and what can't they do today?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like otinv to do?
+  - type: textarea
+    id: ai
+    attributes:
+      label: AI tools
+      description: If an AI tool wrote or summarized this request, say which.

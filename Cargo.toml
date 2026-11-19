@@ -1,0 +1,27 @@
+[package]
+name = "otinv"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.80"
+authors = ["Londopy"]
+license = "MIT"
+description = "Turns passive captures from a small utility's control network into a plain-English asset inventory and a what-to-fix-first report."
+homepage = "https://github.com/Londopy/otinv"
+repository = "https://github.com/Londopy/otinv"
+readme = "README.md"
+keywords = ["ics", "ot", "scada", "zeek", "inventory"]
+categories = ["command-line-utilities"]
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+# only deflate: .londopy files never need the other codecs
+zip = { version = "9", default-features = false, features = ["deflate"] }
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

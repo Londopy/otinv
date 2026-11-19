@@ -1,0 +1,40 @@
+name: Bug report
+description: otinv crashed, misread a log, or reported something wrong
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Never attach real utility captures, logs or reports.** They describe critical infrastructure.
+        Reproduce the problem with the lab fixtures, a capture you made yourself, or a few hand-edited log lines with made-up addresses.
+  - type: input
+    id: version
+    attributes:
+      label: otinv version
+      description: Output of `otinv --version`
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [Windows, Linux, macOS, Other]
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: The command you ran and a minimal, synthetic log excerpt.
+      render: text
+  - type: textarea
+    id: ai
+    attributes:
+      label: AI tools
+      description: If an AI tool wrote or summarized this report, say which.

@@ -1,0 +1,33 @@
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors
+.idea/
+.vscode/
+*.swp
+
+# Rust
+target/
+
+# Build output
+*.exe
+*.pdb
+*.msi
+*.wixpdb
+installer/output/
+installer/license.rtf
+
+# Secrets
+.env
+*.key
+
+# Real utility data never goes in the repo: captures and report folders.
+# The lab fixtures under tests/fixtures are synthetic and are kept.
+*.pcap
+*.pcapng
+otinv-report/
+otinv-diff/
+*.londopy
+!tests/fixtures/**
