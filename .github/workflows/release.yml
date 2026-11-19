@@ -169,7 +169,7 @@ jobs:
           Pop-Location
           Remove-Item stage\*.wixpdb -ErrorAction SilentlyContinue
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: build-${{ matrix.label }}
           path: stage/
@@ -213,7 +213,7 @@ jobs:
           cp target/release/otinv "out/$name"
           ls -l out
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: build-linux-x86_64
           path: out/
