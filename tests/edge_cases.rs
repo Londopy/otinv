@@ -351,3 +351,52 @@ fn pseudonym_map_files_roundtrip_formula_values() {
     assert_eq!(a, b);
     assert!(pseudo::Map::from_csv("real,alias\nx,host-01\ny,host-01\n").is_err());
 }
+
+#[test]
+fn modbus_device_identification_as_icsnpp_logs_it() {
+    // columns and values as ICSNPP-Modbus writes them (from the capture test)
+    let fields = "ts\tuid\tid.orig_h\tid.orig_p\tid.resp_h\tid.resp_p\tis_orig\tsource_h\tsource_p\tdestination_h\tdestination_p\tfunc\tobject_id_code\tobject_id\tobject_value";
+    let row = |is_orig: &str, code: &str, name: &str, value: &str| {
+        let (s, d) = if is_orig == "T" {
+            ("10.0.0.7", "10.0.0.10")
+        } else {
+            ("10.0.0.10", "10.0.0.7")
+        };
+        format!("1.0\tM1\t10.0.0.7\t40000\t10.0.0.10\t502\t{is_orig}\t{s}\t40000\t{d}\t502\tENCAP_INTERFACE_TRANSPORT\t{code}\t{name}\t{value}")
+    };
+    let r = run(
+        "modbus-ident",
+        &[
+            (
+                "conn.log",
+                tsv(CONN_FIELDS, &[data(1, "10.0.0.7", "10.0.0.10", 502)]),
+            ),
+            (
+                "modbus_read_device_identification.log",
+                tsv(
+                    fields,
+                    &[
+                        row("T", "0x00", "Basic Device Identification", "-"),
+                        row("F", "0x00", "VendorName", "AutomationDirect"),
+                        row("F", "0x01", "ProductCode", "C0-12DD1E-D"),
+                        row("F", "0x02", "MajorMinorVersion", "3.41"),
+                    ],
+                ),
+            ),
+        ],
+    );
+    let plc = r.asset("10.0.0.10").unwrap();
+    assert_eq!(
+        plc.identity.get("vendor").map(String::as_str),
+        Some("AutomationDirect")
+    );
+    assert_eq!(
+        plc.identity.get("product code").map(String::as_str),
+        Some("C0-12DD1E-D")
+    );
+    assert_eq!(
+        plc.identity.get("firmware").map(String::as_str),
+        Some("3.41")
+    );
+    assert!(r.asset("10.0.0.7").unwrap().identity.is_empty());
+}

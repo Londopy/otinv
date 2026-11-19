@@ -535,13 +535,15 @@ impl<'a> Builder<'a> {
                     }
                 }
             } else if let (Some(id), Some(val)) = (
-                rec.get_any(&["object_id", "object_id_code", "object_name"]),
+                // the numeric code is the spec's; names differ (ICSNPP says
+                // MajorMinorVersion where the spec says MajorMinorRevision)
+                rec.get_any(&["object_id_code", "object_id", "object_name"]),
                 rec.get_any(&["object_value", "value"]),
             ) {
                 let key = match id.to_ascii_lowercase().trim_start_matches("0x") {
                     "0" | "00" | "vendorname" | "vendor_name" => Some("vendor"),
                     "1" | "01" | "productcode" | "product_code" => Some("product code"),
-                    "2" | "02" | "majorminorrevision" | "major_minor_revision" => Some("firmware"),
+                    "2" | "02" | "majorminorrevision" | "majorminorversion" => Some("firmware"),
                     "4" | "04" | "productname" | "product_name" => Some("model"),
                     "5" | "05" | "modelname" | "model_name" => Some("model"),
                     _ => None,
