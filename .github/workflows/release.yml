@@ -54,7 +54,7 @@ jobs:
         id: tag
         run: echo "tag=${{ inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ steps.tag.outputs.tag }}
 
@@ -91,7 +91,7 @@ jobs:
           - { target: i686-pc-windows-msvc,    label: x86 }
           - { target: aarch64-pc-windows-msvc, label: arm64 }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.validate.outputs.tag }}
 
@@ -183,7 +183,7 @@ jobs:
     # support. Move it on when GitHub retires this runner image.
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.validate.outputs.tag }}
 
@@ -228,7 +228,7 @@ jobs:
     env:
       TAG: ${{ needs.validate.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.validate.outputs.tag }}
           fetch-depth: 0   # the previous tag, for the compare link
