@@ -8,6 +8,8 @@ what appears on its GitHub release page. Validated in CI by
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-19
+
 ### Added
 
 - Zeek log reader for TSV and JSON logs that reads only the logs and fields it uses, drops user names and passwords while reading, and skips lines cut off mid-write.
@@ -28,3 +30,6 @@ what appears on its GitHub release page. Validated in CI by
 - Findings name the CISA CPG 2.0 goals they relate to.
 - A Capture workflow that runs otinv through real Zeek and the ICSNPP parsers on a generated lab capture.
 - Every release lists all its files in `SHA256SUMS.txt` and offers each download as a web-seeded torrent and magnet link.
+
+[Unreleased]: https://github.com/Londopy/otinv/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/Londopy/otinv/releases/tag/v0.1.0
