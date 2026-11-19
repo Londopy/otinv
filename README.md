@@ -47,10 +47,40 @@ WHAT TO FIX FIRST
 
 ## Install
 
-There is no release yet. Build it from source (below). Once it's released,
-Windows builds will ship as a per-user installer, an MSI, a portable exe and
-zip, plus `SHA256SUMS.txt`. The binaries will be unsigned, so check the
-checksums.
+**Windows:** download `otinv-<version>-setup-x64.exe` from the
+[latest release](https://github.com/Londopy/otinv/releases/latest) and run
+it. It installs for your user only, so there's no admin prompt. Tick **Add
+otinv to the PATH** to run `otinv` from any terminal. The release also has:
+
+- MSIs for x64, x86 and arm64. They install per-user by default and put
+  otinv on the PATH. For a machine-wide install:
+  `msiexec /i otinv-<version>-x64.msi ALLUSERS=2 MSIINSTALLPERUSER=""`.
+- Standalone portable exes, and a zip with all three builds.
+- A PowerShell script that picks the right build, checks it and installs it
+  (`-AddToPath` also puts it on your PATH):
+
+```powershell
+& ([scriptblock]::Create((irm https://github.com/Londopy/otinv/releases/latest/download/install.ps1))) -AddToPath
+```
+
+**Linux (x86_64):** built on Ubuntu 22.04, so it needs glibc 2.35 or newer.
+
+```sh
+tar xzf otinv-v<version>-linux-x86_64.tar.gz
+install -Dm755 otinv-v<version>-linux-x86_64/otinv ~/.local/bin/otinv
+```
+
+The binaries aren't code-signed, so SmartScreen may warn (**More info**,
+then **Run anyway**). Each release lists every file's SHA-256 in
+`SHA256SUMS.txt`; check your download against it.
+
+### Updating
+
+`otinv update` checks GitHub for a newer release and asks before installing
+it. It checks the download against the release's `SHA256SUMS.txt`, then
+replaces the running exe. `otinv update --check` only says whether there is
+a newer release. It never runs on its own. For an all-users install in
+Program Files, it prints the link to the new MSI or setup.exe instead.
 
 otinv itself is one self-contained binary. To analyze **captures** (rather
 than Zeek logs you already have), it also needs Zeek with CISA's ICSNPP
@@ -60,7 +90,7 @@ packages, which it finds on its own:
 |---|---|
 | Linux | Install [Zeek](https://zeek.org), then `zkg install icsnpp-modbus icsnpp-dnp3 icsnpp-enip ...` |
 | Windows | The same inside WSL (`wsl -e zeek --version` should work) |
-| Either | `docker build -t otinv-zeek:local docker/zeek-icsnpp` (untested starting point, see the Dockerfile) |
+| Either | `docker build -t otinv-zeek:local docker/zeek-icsnpp` (Zeek 9.0.1 and CISA's ICSNPP parsers; the Capture workflow builds this exact image and checks otinv against it) |
 
 otinv never downloads or installs any of this itself. It runs Zeek with the
 default scripts, the zkg packages and MAC logging, but not your
@@ -74,8 +104,11 @@ has read them, because they can hold user names, passwords and URLs that
 otinv's reports leave out. `--keep-logs` keeps them in `<out>/zeek-logs`
 instead.
 
-The capture path (native, WSL and Docker) hasn't been run against a real
-Zeek yet. The log path is what the tests cover.
+The **Capture** workflow (`.github/workflows/capture.yml`) builds the
+Docker image and generates a lab capture with
+`tests/fixtures/make_lab_pcap.py`. It runs otinv on that capture through
+real Zeek and ICSNPP, and checks every expected finding. The native and WSL
+runners use the same Zeek command, but no test runs them.
 
 ## Usage
 
@@ -92,6 +125,10 @@ otinv analyze capture-dec.pcap -o otinv-2026-12 --previous otinv-2026-11/run.lon
 # also write a pseudonymized copy to otinv-2026-11/share/ for a volunteer
 # reviewer; send only that share/ folder
 otinv analyze capture.pcap -o otinv-2026-11 --pseudonymize
+
+# next month: the same devices keep the same aliases (host-03 stays host-03),
+# because the pseudonym-map.csv next to --previous is reused automatically
+otinv analyze capture-dec.pcap -o otinv-2026-12 --previous otinv-2026-11/run.londopy --pseudonymize
 
 # compare any two saved runs
 otinv diff otinv-2026-10/run.londopy otinv-2026-12/run.londopy -o since-october
@@ -111,8 +148,9 @@ Logs can be Zeek's default tab-separated format or JSON. otinv reads only
 and drops everything else as it reads, including URLs, cookies, SNMP
 communities and FTP reply text. User names and passwords leave only a "a
 login happened" marker. Other logs in the folder aren't read. A file not named after its type, like `2026-11-01-conn.log`, is recognized from the `#path` or `_path` in its first lines.
-Compressed logs are skipped with a warning, and lines cut off mid-write are
-skipped and counted.
+Compressed logs are skipped with a warning, and lines cut off mid-write (or
+longer than 1 MiB) are skipped and counted. A single log over 4 GB is refused
+unless you raise `--max-log-mb`.
 
 For MAC addresses in `conn.log`, run Zeek with
 `policy/protocols/conn/mac-logging`. otinv does that itself when it runs
@@ -142,9 +180,13 @@ built-in list of vendors common on control networks.
 
 ### Inventory columns
 
-`inventory.csv` follows the vocabulary of CISA's asset-inventory guidance
-(role, OT or IT, make/model, firmware, network address, communications), so
-you can hand it to an inspector or insurer as it is.
+`inventory.csv` is the "regularly updated inventory of all organizational
+assets" of CISA's CPG 2.0 goal **2.A Manage Organizational Assets**. It uses
+the vocabulary of CISA's asset-inventory guidance (role, OT or IT,
+make/model, firmware, network address, communications), so you can hand it
+to an inspector or insurer as it is. The communication map (`comms.*`, and
+the map in the appendix) covers goal **2.E Document Network Topology**. Every
+finding names the CPG 2.0 goals it relates to.
 
 | Column | Meaning |
 |---|---|
@@ -163,7 +205,7 @@ you can hand it to an inspector or insurer as it is.
 
 - **Scan anything, ever.** It reads logs of traffic that already happened.
 - Be an IDS or a sensor. Malcolm, Zeek and Dragos already do that well.
-- Upload anything. There's no telemetry and no network access at all.
+- Upload anything. There's no telemetry, and no network access except `otinv update`, which only runs when you type it and only talks to GitHub.
 - Touch or fix devices. It tells a person what to do.
 - See devices that stayed silent during the capture, or traffic that never crossed the mirror port.
 
@@ -223,9 +265,13 @@ src/
   report/        summary and appendix (text, HTML), CSV, map (DOT, Mermaid, SVG)
   runner.rs      running zeek: native, WSL or Docker
   londopy.rs     .londopy files
+  update.rs      otinv update: GitHub Releases check, SHA-256, exe swap
 rules/default.toml   the built-in rules
+installer/           Inno Setup and WiX sources, install.ps1 and install.cmd
+scripts/release_notes.py   the release page, checksums and torrents
 docker/zeek-icsnpp/  Zeek + ICSNPP image for the docker runner
-tests/               scenario tests and lab fixtures
+tests/               scenario, edge-case and capture tests; lab fixtures and
+                     the generators for its logs and its capture
 ```
 
 ## Contributing

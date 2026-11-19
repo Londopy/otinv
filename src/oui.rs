@@ -4,7 +4,7 @@
 // networks, so reports say something useful offline. for full coverage,
 // download the IEEE registry once (https://standards-oui.ieee.org/oui/oui.csv)
 // and pass it with --oui.
-// TODO before release: re-check every built-in entry against the IEEE registry.
+// every entry was checked against the IEEE registry on 2026-11-19.
 
 use anyhow::{Context, Result};
 use std::collections::HashMap;
@@ -25,15 +25,15 @@ const BUILTIN: &[(&str, &str)] = &[
     ("286336", "Siemens"),
     ("000054", "Schneider Electric"),
     ("0080F4", "Telemecanique (Schneider Electric)"),
-    ("00D07C", "Koyo Electronics (AutomationDirect)"),
+    ("00D07C", "JTEKT Electronics (Koyo)"),
     ("0090E8", "Moxa"),
     ("00A045", "Phoenix Contact"),
     ("0030DE", "WAGO"),
     ("000105", "Beckhoff Automation"),
-    ("008063", "Hirschmann (Belden)"),
+    ("008063", "Hirschmann Automation and Control"),
     ("005056", "VMware"),
     ("000C29", "VMware"),
-    ("080027", "VirtualBox"),
+    ("080027", "PCS Systemtechnik (VirtualBox)"),
 ];
 
 pub struct Oui {

@@ -20,3 +20,11 @@ what appears on its GitHub release page. Validated in CI by
 - `--pseudonymize` writes a pseudonymized copy of the reports to `share/`. Every shared file is checked for IP and MAC addresses before otinv finishes.
 - Running Zeek on a capture through a native install, WSL or a local Docker image (with `--network none`). Raw Zeek logs go to a temporary folder unless `--keep-logs` is given.
 - Editable rules (`otinv rules`) and site files (`otinv site-template`).
+- `otinv update` checks GitHub for a newer release and, once you say yes, downloads it, checks its SHA-256 against the release's `SHA256SUMS.txt` and replaces the running exe. `--check` only reports. It is the only command that uses the network, and only when you run it.
+- Windows downloads: a per-user installer with an opt-in "Add otinv to the PATH" task, MSIs for x64, x86 and arm64 that put otinv on PATH, standalone portable exes, a portable zip, and `install.ps1`/`install.cmd` script installs.
+- Linux x86_64 downloads: a `.tar.gz` with the binary, LICENSE and README, and the bare binary.
+- Pseudonym aliases stay the same from one run to the next: the `pseudonym-map.csv` next to `--previous` (or `--pseudonym-map`) is reused.
+- Input limits: lines over 1 MiB are skipped and counted, and a log over `--max-log-mb` (default 4096) is refused.
+- Findings name the CISA CPG 2.0 goals they relate to.
+- A Capture workflow that runs otinv through real Zeek and the ICSNPP parsers on a generated lab capture.
+- Every release lists all its files in `SHA256SUMS.txt` and offers each download as a web-seeded torrent and magnet link.

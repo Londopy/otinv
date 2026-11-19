@@ -302,8 +302,9 @@ min_polls = 10
 #
 # `check` picks the built-in test; everything else is yours to tune. The text
 # is what a utility operator reads, so keep it plain.
-# `cpg` names the CISA Cross-Sector Cybersecurity Performance Goal the finding
-# relates to. TODO before release: check the wording against CPG 2.0.
+# `cpg` names the CISA Cross-Sector Cybersecurity Performance Goals 2.0
+# (December 2025) the finding relates to, by number and title as CISA
+# publishes them: https://www.cisa.gov/cybersecurity-performance-goals-2-0-cpg-2-0
 # ---------------------------------------------------------------------------
 
 [[rule]]
@@ -317,7 +318,7 @@ change it."""
 action = """Remove the internet path to these devices. If a vendor or staff \
 member needs remote access, put it behind a VPN with multi-factor login, and \
 turn it off when it isn't in use."""
-cpg = "Limit OT connections to the public internet"
+cpg = "3.S Secure Internet Facing Devices; 3.I Implement Logical/Physical Network Segmentation"
 
 [[rule]]
 id = "REMOTE-ACCESS"
@@ -331,7 +332,7 @@ operators see, and can click the same buttons."""
 action = """Turn off remote-access services nobody uses. For the ones you need, \
 require a VPN and multi-factor login, replace default or shared passwords, and \
 allow connections only from known addresses."""
-cpg = "No exploitable services on the internet; MFA for remote access"
+cpg = "3.S Secure Internet Facing Devices; 3.F Implement Multi-factor Authentication"
 
 [[rule]]
 id = "CLEARTEXT-LOGIN"
@@ -344,7 +345,7 @@ logins but did not keep the user names or passwords.)"""
 action = """Change the passwords that were used. Then switch these devices to a \
 protected method (SSH, SFTP or HTTPS), or turn the service off if nobody needs \
 it."""
-cpg = "Strong and agile encryption; change default passwords"
+cpg = "3.K Utilize Strong Encryption; 3.A Changing Default Passwords"
 
 [[rule]]
 id = "UNEXPECTED-WRITE"
@@ -358,7 +359,7 @@ action = """Find out who used this computer at that time and why. If it was \
 planned work, add the computer to expected_writers in site.toml so it isn't \
 flagged again. If nobody knows, treat it as an incident and call your \
 incident-response contacts."""
-cpg = "Detect relevant threats; incident reporting"
+cpg = "4.B Identify Adverse Events; 5.B Establish Incident Reporting Procedures"
 
 [[rule]]
 id = "NEW-DEVICE"
@@ -369,7 +370,7 @@ why = """A device you don't know about is a device nobody is updating or \
 watching."""
 action = """Identify each new device and add it to your inventory, or take it \
 off the network."""
-cpg = "Asset inventory"
+cpg = "2.A Manage Organizational Assets; 3.R Prohibit Connection of Unauthorized Devices"
 
 [[rule]]
 id = "IT-OT-MIXING"
@@ -381,4 +382,4 @@ updates, cloud services) gives malware a way in and a way to send data out."""
 action = """Block internet access from the control network at the firewall, \
 except for specific needs you have written down. Use a separate office \
 computer for email and browsing."""
-cpg = "Network segmentation"
+cpg = "3.I Implement Logical/Physical Network Segmentation"

@@ -25,7 +25,8 @@ You'll get an acknowledgement within 72 hours, and an assessment within 7 days.
 
 - Credentials (user names, passwords, cookies, URLs) reaching any output, the run file, or memory past the log reader.
 - Real addresses, MACs, names or serials surviving `--pseudonymize`.
-- otinv sending any network traffic, or the Docker runner starting a container with network access.
+- otinv sending any network traffic other than `otinv update`'s requests to GitHub when you run it, or the Docker runner starting a container with network access.
+- `otinv update` installing a file that doesn't match the release's `SHA256SUMS.txt`, or installing without asking.
 - Crafted logs, captures or `.londopy` files that crash otinv, exhaust memory, or write outside the output folder.
 - A finding that cites evidence that doesn't support it.
 
@@ -38,5 +39,5 @@ You'll get an acknowledgement within 72 hours, and an assessment within 7 days.
 
 ## Binaries
 
-Release binaries are not code-signed. Every release will ship
+Release binaries are not code-signed. Every release ships
 `SHA256SUMS.txt`. Check a download against it before running it.

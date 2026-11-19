@@ -163,7 +163,7 @@ pub fn appendix(run: &Run) -> String {
             let _ = writeln!(
                 o,
                 "{}",
-                wrap(&format!("CISA CPG: {}", a.rule.cpg), W, "  ", "  ")
+                wrap(&format!("CISA CPG 2.0: {}", a.rule.cpg), W, "  ", "  ")
             );
         }
         for f in &a.findings {

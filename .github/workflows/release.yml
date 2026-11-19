@@ -1,0 +1,307 @@
+name: Release
+
+# Tag-driven: `git tag v1.2.3 && git push --tags` is the whole release ritual.
+# Everything below comes from the tag and the changelog, so a release can
+# never disagree with its own notes. A tag with a "-" (v1.2.3-rc1) becomes a
+# pre-release. Re-run an existing tag from the Actions tab (Run workflow).
+#
+# Produces, all listed in SHA256SUMS.txt:
+#   otinv-<ver>-setup-x64.exe                    Inno Setup installer (per-user, no UAC)
+#   otinv-<ver>-{x64,x86,arm64}.msi              MSI (per-user default, all-users option)
+#   otinv-v<ver>-{x64,x86,arm64}-portable.exe    single exe, no install
+#   otinv-v<ver>-portable.zip                    otinv/{x64,x86,arm64}/otinv.exe
+#   otinv-v<ver>-linux-x86_64.tar.gz             otinv-v<ver>-linux-x86_64/{otinv,LICENSE,README.md}
+#   otinv-v<ver>-linux-x86_64                    the same Linux binary on its own
+#   install.ps1, install.cmd                     script installs (irm ... | iex)
+# plus a .torrent and a magnet QR code (.magnet.png) per download, made by
+# scripts/release_notes.py, which also writes SHA256SUMS.txt and the notes.
+# `otinv update` (src/update.rs) and install.ps1 look for exactly these
+# names; change them together. A unit test in src/update.rs reads this file
+# and fails when the names drift apart.
+# Scoop is not updated here: the manifest lives in Londopy/scoop-bucket, whose
+# Excavator workflow picks up each new release from checkver/autoupdate.
+# No winget job: otinv isn't on winget (yet).
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to build (e.g. v1.2.3)"
+        required: true
+        type: string
+
+# read-only everywhere; the release job, which publishes, gets write below
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Gate everything on the changelog first: building nine installers only to
+  # find the release notes are malformed wastes ten minutes.
+  validate:
+    name: Validate changelog and version
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      version: ${{ steps.patchnotes.outputs.latest-version }}
+    steps:
+      - name: Resolve the tag
+        id: tag
+        run: echo "tag=${{ inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.tag.outputs.tag }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Fails unless CHANGELOG.md is valid Keep a Changelog and its newest
+      # section matches the tag. Pinned: the floating v2 tag once resolved to
+      # a release that silently ignored newer inputs.
+      - name: Validate and check version sync
+        id: patchnotes
+        uses: Londopy/patchnotes@v2.6.0
+        with:
+          file: CHANGELOG.md
+          strict: "true"
+          check-version: ${{ steps.tag.outputs.tag }}
+
+      - name: Cargo.toml agrees too
+        run: |
+          set -euo pipefail
+          pip install --quiet patchnotes==2.6.0
+          patchnotes CHANGELOG.md check-version --against Cargo.toml
+
+  build:
+    name: Build (${{ matrix.label }})
+    needs: validate
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: x86_64-pc-windows-msvc,  label: x64 }
+          - { target: i686-pc-windows-msvc,    label: x86 }
+          - { target: aarch64-pc-windows-msvc, label: arm64 }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.tag }}
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      # .cargo/config.toml links the C runtime statically, so the exes start
+      # on a Windows without the Visual C++ Redistributable
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Stage exe
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "stage\${{ matrix.label }}" | Out-Null
+          Copy-Item "target\${{ matrix.target }}\release\otinv.exe" "stage\${{ matrix.label }}\otinv.exe"
+
+      # The installer is x64 only; x86 and arm64 ship as MSIs and portable exes.
+      - name: Install Inno Setup
+        if: matrix.label == 'x64'
+        run: choco install innosetup --no-progress -y
+
+      - name: Compile installer
+        if: matrix.label == 'x64'
+        shell: pwsh   # pwsh so /DAppVersion=... is not mangled by Git Bash path conversion
+        run: |
+          $ver = "${{ needs.validate.outputs.tag }}".TrimStart("v")
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=$ver "/DBinDir=..\target\${{ matrix.target }}\release" installer\otinv.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed" }
+          Copy-Item installer\output\*.exe stage\
+
+      # WiX v7. The maintenance fee only applies above US$10k/yr revenue, but
+      # the EULA must be accepted for the binaries to run, and it comes first:
+      # WiX 7 refuses every other command (WIX7015) until it's accepted. pwsh
+      # only fails a step on the last command's exit code, so each is checked.
+      - name: Install WiX
+        shell: pwsh
+        run: |
+          dotnet tool install --global wix --version 7.0.0
+          if ($LASTEXITCODE -ne 0) { throw "installing wix failed" }
+          wix eula accept wix7
+          if ($LASTEXITCODE -ne 0) { throw "accepting the WiX EULA failed" }
+          wix extension add --global WixToolset.UI.wixext/7.0.0 WixToolset.Util.wixext/7.0.0
+          if ($LASTEXITCODE -ne 0) { throw "adding the WiX extensions failed" }
+
+      - name: Build MSI
+        shell: pwsh
+        run: |
+          $ver = "${{ needs.validate.outputs.tag }}".TrimStart("v")
+          # MSI versions are plain numbers: strip -rc1 etc.
+          $num = ($ver -split "-")[0]
+          # WixUI shows the license from an RTF file; make it from LICENSE
+          $text = Get-Content LICENSE -Raw
+          $sb = [System.Text.StringBuilder]::new()
+          foreach ($ch in $text.ToCharArray()) {
+            $c = [int]$ch
+            if ($ch -eq [char]'\' -or $ch -eq [char]'{' -or $ch -eq [char]'}') { [void]$sb.Append('\' + $ch) }
+            elseif ($ch -eq "`n") { [void]$sb.Append("\par`n") }
+            elseif ($ch -eq "`r") { }
+            elseif ($c -gt 127) { if ($c -gt 32767) { $c -= 65536 }; [void]$sb.Append("\u${c}?") }
+            else { [void]$sb.Append($ch) }
+          }
+          "{\rtf1\ansi\deff0{\fonttbl{\f0 Segoe UI;}}\fs18 " + $sb.ToString() + "}" | Set-Content installer\license.rtf -Encoding ascii
+          # run from installer\ so relative paths in the .wxs match the .iss
+          Push-Location installer
+          wix build -arch ${{ matrix.label }} -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext `
+            -d Version=$num -d "BinDir=..\target\${{ matrix.target }}\release" `
+            -o "..\stage\otinv-$ver-${{ matrix.label }}.msi" otinv.wxs
+          if ($LASTEXITCODE -ne 0) { throw "wix build failed" }
+          Pop-Location
+          Remove-Item stage\*.wixpdb -ErrorAction SilentlyContinue
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.label }}
+          path: stage/
+          retention-days: 1
+
+  build-linux:
+    name: Build (linux-x86_64)
+    needs: validate
+    # Pinned to 22.04, not ubuntu-latest: a binary linked against a newer
+    # glibc won't start on older distros, so build on the oldest one in
+    # support. Move it on when GitHub retires this runner image.
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.tag }}
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: x86_64-unknown-linux-gnu
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Package
+        env:
+          TAG: ${{ needs.validate.outputs.tag }}
+        run: |
+          set -euo pipefail
+          name="otinv-${TAG}-linux-x86_64"
+          mkdir -p "pkg/$name" out
+          cp target/release/otinv LICENSE README.md "pkg/$name/"
+          chmod 755 "pkg/$name/otinv"
+          # packed here because tar keeps the executable bit, which an artifact
+          # upload drops; root ownership so the runner's user isn't in it
+          tar -C pkg -czf "out/$name.tar.gz" --owner=0 --group=0 --numeric-owner "$name"
+          # the bare binary as well: `otinv update` downloads it directly, so
+          # otinv itself needs no tar or gzip code
+          cp target/release/otinv "out/$name"
+          ls -l out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-linux-x86_64
+          path: out/
+          retention-days: 1
+
+  release:
+    name: Publish release
+    needs: [validate, build, build-linux]
+    runs-on: windows-latest
+    permissions:
+      contents: write   # create the release and upload assets; the only job that writes
+    env:
+      TAG: ${{ needs.validate.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.tag }}
+          fetch-depth: 0   # the previous tag, for the compare link
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: build-*
+
+      - name: Assemble the downloads
+        shell: pwsh
+        run: |
+          $tag = $env:TAG
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          # Stable inner folder name (no version) so Scoop's extract_dir is constant
+          $root = "zip\otinv"
+          foreach ($arch in "x64", "x86", "arm64") {
+            New-Item -ItemType Directory -Force -Path "$root\$arch" | Out-Null
+            Copy-Item "artifacts\build-$arch\$arch\otinv.exe" "$root\$arch\"
+            # empty "portable" marker, so the zip has the same layout as every
+            # Londopy app's (and what Scoop's pre_install makes); otinv itself
+            # keeps no settings yet
+            New-Item -ItemType File -Force -Path "$root\$arch\portable" | Out-Null
+            # the same exe on its own, for people who want one file and no
+            # install; `otinv update` downloads these
+            Copy-Item "artifacts\build-$arch\$arch\otinv.exe" "dist\otinv-$tag-$arch-portable.exe"
+          }
+          Compress-Archive -Path $root -DestinationPath "dist\otinv-$tag-portable.zip"
+          Copy-Item artifacts\build-x64\*-setup-x64.exe dist\
+          Copy-Item artifacts\build-*\*.msi dist\
+          # the Linux tar.gz and bare binary
+          Copy-Item artifacts\build-linux-x86_64\* dist\
+          Copy-Item installer\install.ps1, installer\install.cmd dist\
+          Get-ChildItem dist | Format-Table Name, Length
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # torrents + magnet QR codes for every download, SHA256SUMS.txt over
+      # everything, and the release page from CHANGELOG.md (copied verbatim:
+      # `patchnotes show` prints indented text that renders as a code block)
+      - name: Release notes, checksums and torrents
+        shell: pwsh
+        run: |
+          pip install --quiet segno==1.6.6
+          $prev = git describe --tags --abbrev=0 "$env:TAG^" 2>$null
+          if ($LASTEXITCODE -ne 0) { $prev = "" }
+          # add --scoop once Londopy/scoop-bucket has bucket/otinv.json, and
+          # --winget if otinv gets a winget job
+          python scripts\release_notes.py $env:TAG dist --prev "$prev" --out body.md
+          if ($LASTEXITCODE -ne 0) { throw "release_notes.py failed" }
+          "TITLE=$(Get-Content title.txt -Raw)".Trim() | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          Get-Content dist\SHA256SUMS.txt
+
+      # Draft first, publish after every asset is uploaded, so `otinv update`
+      # never sees a half-uploaded release.
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: ${{ env.TITLE }}
+          body_path: body.md
+          files: dist/*
+          draft: true
+          prerelease: ${{ contains(env.TAG, '-') }}
+
+      - name: Publish the draft
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ($env:TAG.Contains("-")) {
+            gh release edit $env:TAG --draft=false
+          } else {
+            gh release edit $env:TAG --draft=false --latest
+          }

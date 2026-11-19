@@ -53,7 +53,7 @@ fn run(tag: &str, files: &[(&str, String)]) -> Run {
     for (name, body) in files {
         std::fs::write(d.join(name), body).unwrap();
     }
-    let logs = zeek::read_dir(&d).unwrap();
+    let logs = zeek::read_dir(&d, zeek::DEFAULT_MAX_LOG_MB).unwrap();
     let rules = Rules::builtin();
     let r = pipeline::analyze(&pipeline::Inputs {
         logs: &logs,
@@ -303,4 +303,51 @@ fn leak_check_finds_escaped_values() {
     // simulate a gap in apply(): the real host name slips through
     p.assets[0].hostnames.push(real.to_string());
     assert_eq!(map.leaks(&p), [real]);
+}
+
+#[test]
+fn aliases_stay_the_same_from_month_to_month() {
+    let october = named("oct", "PUMP-HMI");
+    let first = pseudo::Map::build(&[&october]);
+    // november: the same devices plus a new one
+    let november = run(
+        "nov",
+        &[(
+            "conn.log",
+            tsv(
+                CONN_FIELDS,
+                &[
+                    data(1, "10.0.0.5", "10.0.0.10", 502),
+                    data(2, "10.0.0.3", "10.0.0.10", 502),
+                ],
+            ),
+        )],
+    );
+    let saved = first.to_csv();
+    let reloaded = pseudo::Map::from_csv(&saved).unwrap();
+    let second = pseudo::Map::extend(&reloaded, &[&november]);
+    let alias = |m: &pseudo::Map, real: &str| {
+        m.pairs()
+            .find(|(r, _)| *r == real)
+            .map(|(_, a)| a.clone())
+            .unwrap()
+    };
+    for real in ["10.0.0.5", "10.0.0.10", "PUMP-HMI"] {
+        assert_eq!(alias(&first, real), alias(&second, real), "{real}");
+    }
+    // the new device gets a fresh number, not one already handed out
+    let new = alias(&second, "10.0.0.3");
+    assert!(first.pairs().all(|(_, a)| *a != new), "{new}");
+    assert!(second.leaks(&second.apply(&november)).is_empty());
+}
+
+#[test]
+fn pseudonym_map_files_roundtrip_formula_values() {
+    let r = named("formula", "=cmd|' /C calc'!A0");
+    let m = pseudo::Map::build(&[&r]);
+    let back = pseudo::Map::from_csv(&m.to_csv()).unwrap();
+    let a: Vec<_> = m.pairs().collect();
+    let b: Vec<_> = back.pairs().collect();
+    assert_eq!(a, b);
+    assert!(pseudo::Map::from_csv("real,alias\nx,host-01\ny,host-01\n").is_err());
 }

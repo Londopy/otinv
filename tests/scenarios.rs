@@ -26,7 +26,7 @@ fn tmp(tag: &str) -> PathBuf {
 }
 
 fn run_on(name: &str, site: &Site, previous: Option<&Run>) -> Run {
-    let logs = zeek::read_dir(&fixture(name)).unwrap();
+    let logs = zeek::read_dir(&fixture(name), zeek::DEFAULT_MAX_LOG_MB).unwrap();
     let rules = Rules::builtin();
     pipeline::analyze(&pipeline::Inputs {
         logs: &logs,
@@ -344,7 +344,7 @@ fn reports_render_for_an_empty_capture() {
         "#separator \\x09\n#fields\tts\tuid\tid.orig_h\tid.resp_h\n",
     )
     .unwrap();
-    let logs = zeek::read_dir(&dir).unwrap();
+    let logs = zeek::read_dir(&dir, zeek::DEFAULT_MAX_LOG_MB).unwrap();
     let rules = Rules::builtin();
     let run = pipeline::analyze(&pipeline::Inputs {
         logs: &logs,
@@ -455,7 +455,7 @@ fn hostile_strings_are_neutralized_in_csv_and_html() {
     )
     .unwrap();
     let site = Site::parse("[names]\n\"10.0.0.5\" = \"Well <script>alert(1)</script>\"\n").unwrap();
-    let logs = zeek::read_dir(&logs).unwrap();
+    let logs = zeek::read_dir(&logs, zeek::DEFAULT_MAX_LOG_MB).unwrap();
     let rules = Rules::builtin();
     let run = pipeline::analyze(&pipeline::Inputs {
         logs: &logs,

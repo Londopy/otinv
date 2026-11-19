@@ -204,7 +204,11 @@ pub fn appendix(run: &Run) -> String {
             html(&a.rule.action)
         );
         if !a.rule.cpg.is_empty() {
-            let _ = write!(o, "<p class=\"meta\">CISA CPG: {}</p>", html(&a.rule.cpg));
+            let _ = write!(
+                o,
+                "<p class=\"meta\">CISA CPG 2.0: {}</p>",
+                html(&a.rule.cpg)
+            );
         }
         for f in &a.findings {
             let _ = write!(o, "<p>{} {}</p>", sev(f.severity), html(&describe(run, f)));

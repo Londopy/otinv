@@ -180,9 +180,18 @@ pub struct Log {
     pub skipped: usize,
 }
 
+/// Default for `--max-log-mb`: a month of a small utility's conn.log is far
+/// below this; anything bigger is probably the wrong folder.
+pub const DEFAULT_MAX_LOG_MB: u64 = 4096;
+
+/// Longest line kept. No zeek log line comes close; a longer one is skipped
+/// (and counted) without ever being held in memory.
+const MAX_LINE: usize = 1 << 20;
+
 /// Reads the zeek logs otinv uses from a directory (not recursive). Other
-/// logs are never opened; compressed ones are skipped with a warning.
-pub fn read_dir(dir: &Path) -> Result<Vec<Log>> {
+/// logs are never opened; compressed ones are skipped with a warning; a file
+/// over `max_mb` megabytes is refused.
+pub fn read_dir(dir: &Path, max_mb: u64) -> Result<Vec<Log>> {
     let mut paths: Vec<PathBuf> = std::fs::read_dir(dir)
         .with_context(|| format!("Reading {}", dir.display()))?
         .filter_map(|e| e.ok().map(|e| e.path()))
@@ -201,6 +210,13 @@ pub fn read_dir(dir: &Path) -> Result<Vec<Log>> {
             continue;
         }
         if name.ends_with(".log") || name.ends_with(".json") {
+            let mb = std::fs::metadata(&p).map(|m| m.len()).unwrap_or(0) / (1024 * 1024);
+            if mb > max_mb {
+                bail!(
+                    "{name} is {mb} MB, over the {max_mb} MB limit; raise --max-log-mb if \
+                     this really is the right log"
+                );
+            }
             logs.push(read_file(&p)?);
         }
     }
@@ -250,8 +266,39 @@ pub fn read_file(path: &Path) -> Result<Log> {
     parse(&name, BufReader::new(file)).with_context(|| format!("Parsing {}", path.display()))
 }
 
+/// Reads one line (without the newline) into `buf`, holding at most
+/// MAX_LINE bytes. Some(true): a line; Some(false): a line too long, skipped;
+/// None: end of input.
+fn next_line(r: &mut impl BufRead, buf: &mut Vec<u8>) -> std::io::Result<Option<bool>> {
+    buf.clear();
+    let mut too_long = false;
+    let mut any = false;
+    loop {
+        let avail = r.fill_buf()?;
+        if avail.is_empty() {
+            return Ok(any.then_some(!too_long));
+        }
+        any = true;
+        let newline = avail.iter().position(|&b| b == b'\n');
+        let chunk = &avail[..newline.unwrap_or(avail.len())];
+        if !too_long {
+            if buf.len() + chunk.len() > MAX_LINE {
+                too_long = true;
+                buf.clear();
+            } else {
+                buf.extend_from_slice(chunk);
+            }
+        }
+        let used = newline.map_or(avail.len(), |i| i + 1);
+        r.consume(used);
+        if newline.is_some() {
+            return Ok(Some(!too_long));
+        }
+    }
+}
+
 /// Parses one log. The format is sniffed from the first non-blank line.
-pub fn parse(file_name: &str, reader: impl BufRead) -> Result<Log> {
+pub fn parse(file_name: &str, mut reader: impl BufRead) -> Result<Log> {
     // "conn.log", "conn.08:00:00-09:00:00.log" and "conn.json" are all "conn"
     let mut name = file_name.split('.').next().unwrap_or(file_name).to_string();
     let mut format = None;
@@ -265,8 +312,16 @@ pub fn parse(file_name: &str, reader: impl BufRead) -> Result<Log> {
     let mut empty = "(empty)".to_string();
     let mut fields: Vec<String> = Vec::new();
 
-    for (i, line) in reader.split(b'\n').enumerate() {
-        let raw = line?;
+    let mut raw = Vec::new();
+    let mut next_index = 0usize;
+    while let Some(fits) = next_line(&mut reader, &mut raw)? {
+        // 0-based line index; evidence shows i + 1
+        let i = next_index;
+        next_index += 1;
+        if !fits {
+            skipped += 1;
+            continue;
+        }
         let text = String::from_utf8_lossy(&raw);
         let text = text.trim_end_matches('\r');
         if text.trim().is_empty() {
@@ -491,6 +546,18 @@ mod tests {
     }
 
     #[test]
+    fn overlong_lines_are_skipped_not_buffered() {
+        let long = "x".repeat(MAX_LINE + 10);
+        let text = format!("#separator \\x09\n#fields\tts\tuid\n1\tC1\n{long}\n2\tC2");
+        let log = parse("conn.log", text.as_bytes()).unwrap();
+        assert_eq!(log.records.len(), 2);
+        assert_eq!(log.skipped, 1);
+        // line numbers still count the skipped line
+        assert_eq!(log.records[1].line, 5);
+        assert_eq!(log.records[1].uid(), Some("C2"));
+    }
+
+    #[test]
     fn data_without_header_is_an_error() {
         assert!(parse("conn.log", "1\t2\n".as_bytes()).is_err());
     }
@@ -505,11 +572,11 @@ mod tests {
         // not a log otinv uses: never opened, so its junk can't fail the run
         std::fs::write(d.join("snmp.log"), "garbage without a header\n").unwrap();
         std::fs::write(d.join("modbus.log.gz"), [0x1f, 0x8b]).unwrap();
-        let logs = read_dir(&d).unwrap();
+        let logs = read_dir(&d, DEFAULT_MAX_LOG_MB).unwrap();
         assert_eq!(logs.len(), 1);
         assert_eq!(logs[0].name, "conn");
         std::fs::remove_file(d.join("conn.log")).unwrap();
-        assert!(read_dir(&d)
+        assert!(read_dir(&d, DEFAULT_MAX_LOG_MB)
             .unwrap_err()
             .to_string()
             .contains("no conn.log"));
@@ -524,7 +591,11 @@ mod tests {
             "{\"_path\": \"dhcp\", \"ts\": 1}\n",
         )
         .unwrap();
-        let mut names: Vec<String> = read_dir(&d).unwrap().into_iter().map(|l| l.name).collect();
+        let mut names: Vec<String> = read_dir(&d, DEFAULT_MAX_LOG_MB)
+            .unwrap()
+            .into_iter()
+            .map(|l| l.name)
+            .collect();
         names.sort();
         assert_eq!(names, ["conn", "dhcp"]);
         let _ = std::fs::remove_dir_all(&d);

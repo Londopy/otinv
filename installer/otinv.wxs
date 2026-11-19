@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  otinv - MSI installer (WiX Toolset v7)
+
+  Built by the release workflow, once per architecture:
+    wix build -arch x64 -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext
+              -d Version=1.2.3 -d BinDir=..\target\x86_64-pc-windows-msvc\release
+              -o otinv-1.2.3-x64.msi installer\otinv.wxs
+  The workflow also writes installer\license.rtf from LICENSE first
+  (WixUI shows the license from an RTF file).
+
+  One-time WiX setup on a dev machine: see windows-installer.md in the
+  londopy-style skill (dotnet tool, two extensions, EULA acceptance).
+  XML comments can't contain two hyphens in a row, so the commands live there.
+
+  otinv is a command-line tool, so unlike the GUI apps' MSI this one has no
+  shortcuts, no startup entry and no "Launch" checkbox. Instead it puts the
+  install folder on PATH, on by default (the PATH fragment from wix-path.wxs,
+  in WiX v4+ syntax).
+
+  Install scope: per-user by default (no UAC, %LOCALAPPDATA%\Programs\otinv,
+  same folder as the Inno setup.exe). IT admins install machine-wide with:
+    msiexec /i otinv-<ver>-x64.msi ALLUSERS=2 MSIINSTALLPERUSER=""
+  Optional msiexec property: ADDTOPATH=0 leaves PATH alone. The PATH entry
+  goes into the installing user's environment (HKCU) even for a machine-wide
+  install, so for every user IT adds the Program Files folder to the system
+  PATH itself.
+
+  Don't install the MSI and the setup.exe side by side; they share a folder.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+
+  <!-- the workflow passes -d Version=<numeric version>; MSI versions must be
+       plain numbers, so prerelease suffixes like -rc1 are stripped first -->
+  <?ifndef Version ?>
+    <?define Version = "0.0.0" ?>
+  <?endif?>
+  <?ifndef BinDir ?>
+    <?define BinDir = "..\target\release" ?>
+  <?endif?>
+
+  <!-- Id replaces the old UpgradeCode GUID: any newer MSI with the same Id
+       upgrades an older one in place. Never reuse this Id for a different app. -->
+  <Package Id="Londopy.otinv"
+           Name="otinv"
+           Manufacturer="Londopy"
+           Version="$(var.Version)"
+           Language="1033"
+           Scope="perUserOrMachine">
+
+    <!-- same-version reinstall works (handy for testing); downgrades are refused -->
+    <MajorUpgrade AllowSameVersionUpgrades="yes"
+                  DowngradeErrorMessage="A newer version of otinv is already installed." />
+
+    <!-- one msi file, no loose .cab next to it -->
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <!-- Add/Remove Programs links. No ARPPRODUCTICON: otinv has no icon yet -->
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/Londopy/otinv" />
+    <Property Id="ARPHELPLINK" Value="https://github.com/Londopy/otinv/issues" />
+    <Property Id="ARPURLUPDATEINFO" Value="https://github.com/Londopy/otinv/releases" />
+
+    <!-- option for msiexec: ADDTOPATH=0 skips the PATH entry. Secure so it
+         survives into the elevated part of an all-users install. -->
+    <Property Id="ADDTOPATH" Value="1" Secure="yes" />
+
+    <!-- UI: license page + Install button. No "Launch" checkbox: there is no
+         window to launch -->
+    <ui:WixUI Id="WixUI_Minimal" />
+    <WixVariable Id="WixUILicenseRtf" Value="license.rtf" />
+
+    <!-- No util:CloseApplication as in the GUI apps' MSI: Windows Installer's
+         own Restart Manager prompt asks to close a running otinv instead of
+         killing it halfway through writing a report. -->
+
+    <Feature Id="Main" Title="otinv" Level="1">
+      <ComponentRef Id="MainExecutable" />
+      <ComponentRef Id="InstallSourceMarker" />
+      <ComponentRef Id="PathEntry" />
+    </Feature>
+
+    <!-- per-user: %LOCALAPPDATA%\Programs\otinv
+         all users: C:\Program Files\otinv (Program Files (x86) for the x86 msi) -->
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="INSTALLFOLDER" Name="otinv">
+
+        <Component Id="MainExecutable">
+          <File Id="MainExe" Source="$(var.BinDir)\otinv.exe" KeyPath="yes" />
+          <!-- `otinv update` renames the running exe to otinv.exe.old and
+               deletes that the next time otinv starts; uninstall removes one
+               that is still there, and the otinv.exe.new of an update that
+               was cut off -->
+          <RemoveFile Id="RemoveUpdateOld" Name="otinv.exe.old" On="uninstall" />
+          <RemoveFile Id="RemoveUpdateNew" Name="otinv.exe.new" On="uninstall" />
+        </Component>
+
+        <!-- install.ini tells `otinv update` an MSI installed this copy, so in a
+             folder it can't write to (an all-users install) it points to the
+             new MSI instead of replacing itself. Created on install, removed
+             on uninstall. -->
+        <Component Id="InstallSourceMarker">
+          <IniFile Id="InstallSource" Name="install.ini" Directory="INSTALLFOLDER"
+                   Section="install" Key="source" Value="msi" Action="addLine" />
+          <RegistryValue Root="HKMU" Key="Software\Londopy\otinv"
+                         Name="InstallSource" Type="string" Value="msi" KeyPath="yes" />
+        </Component>
+
+        <!-- the install folder on PATH, unless ADDTOPATH=0. Part="last" appends
+             rather than replaces, and Permanent="no" takes it out again on
+             uninstall. System="no" writes the user's environment (HKCU), so it
+             never needs more privilege than the install itself. -->
+        <Component Id="PathEntry" Condition="ADDTOPATH = 1">
+          <Environment Id="PathEntry" Name="PATH" Value="[INSTALLFOLDER]"
+                       Part="last" Action="set" System="no" Permanent="no" />
+          <RegistryValue Root="HKMU" Key="Software\Londopy\otinv"
+                         Name="PathEntry" Type="integer" Value="1" KeyPath="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <!-- otinv keeps nothing in AppData, so there's no config folder to remove.
+         The template's LondopyUnregister custom action comes back when otinv
+         registers the .londopy file type; today it only reads and writes
+         .londopy files (src/londopy.rs has just the container half). -->
+  </Package>
+</Wix>

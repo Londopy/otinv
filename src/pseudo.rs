@@ -9,17 +9,20 @@ use crate::model::{Evidence, Run};
 use crate::net::{cmp_addr, is_local, parse_ip};
 use std::collections::{BTreeMap, BTreeSet};
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Map {
     table: BTreeMap<String, String>,
 }
 
-fn width(n: usize) -> usize {
-    n.max(1).to_string().len().max(2)
-}
-
 impl Map {
+    /// A fresh map for these runs.
     pub fn build(runs: &[&Run]) -> Self {
+        Self::extend(&Map::default(), runs)
+    }
+
+    /// `previous` plus aliases for anything new in these runs. Existing
+    /// aliases never change; new ones take the next free number.
+    pub fn extend(previous: &Map, runs: &[&Run]) -> Self {
         let mut local: BTreeSet<String> = BTreeSet::new();
         let mut public: BTreeSet<String> = BTreeSet::new();
         let mut macs: BTreeSet<String> = BTreeSet::new();
@@ -74,6 +77,9 @@ impl Map {
                 };
             }
         }
+        // values the previous map already covers keep their alias, so the
+        // same device is host-03 in October's share and in November's
+        let mut table = previous.table.clone();
         // an alias must never equal a real value (a device really named
         // "host-01" would otherwise be indistinguishable from an alias)
         let reals: BTreeSet<String> = local
@@ -82,27 +88,26 @@ impl Map {
             .chain(&macs)
             .chain(&names)
             .chain(&serials)
+            .chain(table.keys())
             .cloned()
             .collect();
-        let mut table: BTreeMap<String, String> = BTreeMap::new();
+        let mut used: BTreeSet<String> = table.values().cloned().collect();
         let mut assign = |set: BTreeSet<String>, prefix: &str, numeric: bool| {
-            let mut v: Vec<String> = set.into_iter().collect();
+            let mut v: Vec<String> = set.into_iter().filter(|r| !table.contains_key(r)).collect();
             if numeric {
                 v.sort_by(|a, b| cmp_addr(a, b));
             }
-            let w = width(v.len());
-            let mut prefix = prefix.to_string();
-            while v
-                .iter()
-                .enumerate()
-                .any(|(i, _)| reals.contains(&format!("{prefix}-{:0w$}", i + 1)))
-            {
-                prefix.push('x');
-            }
-            for (i, real) in v.into_iter().enumerate() {
-                table
-                    .entry(real)
-                    .or_insert_with(|| format!("{prefix}-{:0w$}", i + 1));
+            let mut n = 1usize;
+            for real in v {
+                let alias = loop {
+                    let candidate = format!("{prefix}-{n:02}");
+                    n += 1;
+                    if !used.contains(&candidate) && !reals.contains(&candidate) {
+                        break candidate;
+                    }
+                };
+                used.insert(alias.clone());
+                table.insert(real, alias);
             }
         };
         assign(local, "host", true);
@@ -111,6 +116,48 @@ impl Map {
         assign(names, "name", false);
         assign(serials, "serial", false);
         Self { table }
+    }
+
+    /// The private mapping file: `real,alias` rows after a warning comment.
+    pub fn to_csv(&self) -> String {
+        let mut body = String::from(
+            "# SENSITIVE: this file undoes the pseudonymization. Never share it with the reports.\n\
+             # Keep it: pass it back (or leave it next to run.londopy for --previous) and\n\
+             # next month's shared copy uses the same aliases.\n\
+             # A real value starting with = + - or @ is written with a leading ' (spreadsheet safety).\n",
+        );
+        body.push_str(&crate::util::csv_line(&["real", "alias"]));
+        body.push('\n');
+        for (real, alias) in &self.table {
+            body.push_str(&crate::util::csv_line(&[real, alias]));
+            body.push('\n');
+        }
+        body
+    }
+
+    /// Reads a mapping file written by [`Map::to_csv`].
+    pub fn from_csv(text: &str) -> anyhow::Result<Self> {
+        let mut table = BTreeMap::new();
+        let mut aliases = BTreeSet::new();
+        for (i, line) in text.lines().enumerate() {
+            if line.starts_with('#') || line.trim().is_empty() || line == "real,alias" {
+                continue;
+            }
+            let f = crate::util::parse_csv_line(line);
+            let [real, alias] = f.as_slice() else {
+                anyhow::bail!("pseudonym map line {}: expected real,alias", i + 1);
+            };
+            // undo the spreadsheet guard csv_field added on the way out
+            let real = match real.strip_prefix('\'') {
+                Some(r) if r.starts_with(['=', '+', '-', '@', '\t', '\r']) => r.to_string(),
+                _ => real.clone(),
+            };
+            if !aliases.insert(alias.clone()) {
+                anyhow::bail!("pseudonym map line {}: alias {alias} is used twice", i + 1);
+            }
+            table.insert(real, alias.clone());
+        }
+        Ok(Self { table })
     }
 
     fn get(&self, s: &str) -> String {
@@ -179,8 +226,12 @@ impl Map {
     /// values. Checked before anything is written.
     pub fn leaks(&self, run: &Run) -> Vec<String> {
         let json = serde_json::to_string(run).unwrap_or_default();
+        let aliases: BTreeSet<&String> = self.table.values().collect();
         self.table
             .keys()
+            // a real value that is also some alias (a host really named
+            // "host-03") can't be told apart in the output; it isn't a leak
+            .filter(|real| !aliases.contains(real))
             .filter(|real| {
                 // the key as it appears inside JSON, quotes and escapes included
                 let quoted = serde_json::to_string(real).unwrap_or_default();

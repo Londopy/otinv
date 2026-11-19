@@ -9,12 +9,15 @@ use otinv::runner::{self, RunnerChoice, DEFAULT_IMAGE};
 use otinv::{diff, pipeline, pseudo, report, timefmt, util, zeek};
 use std::path::{Path, PathBuf};
 
+// the cli's own module, not the library's: the analysis code stays network-free
+mod update;
+
 #[derive(Parser)]
 #[command(
     name = "otinv",
     version,
     about = "Turns passive captures from a utility's control network into a plain-English \
-             asset inventory and a what-to-fix-first report. Listens only; never sends anything."
+             asset inventory and a what-to-fix-first report. Analysis is passive and offline: it never sends anything to the network it describes."
 )]
 struct Cli {
     #[command(subcommand)]
@@ -31,6 +34,8 @@ enum Cmd {
     Rules,
     /// Print an example site.toml
     SiteTemplate,
+    /// Check GitHub for a newer otinv and install it, after asking
+    Update(UpdateArgs),
 }
 
 #[derive(Args)]
@@ -67,6 +72,12 @@ struct AnalyzeArgs {
     /// Keep zeek's raw logs in <out>/zeek-logs (they can hold passwords)
     #[arg(long)]
     keep_logs: bool,
+    /// Pseudonym map to keep aliases from (default: the one next to --previous)
+    #[arg(long)]
+    pseudonym_map: Option<PathBuf>,
+    /// Refuse any single log file bigger than this many megabytes
+    #[arg(long, default_value_t = zeek::DEFAULT_MAX_LOG_MB)]
+    max_log_mb: u64,
 }
 
 #[derive(Args)]
@@ -81,9 +92,24 @@ struct DiffArgs {
     /// Write the diff pseudonymized to <out>/share, for sharing
     #[arg(long)]
     pseudonymize: bool,
+    /// Pseudonym map to keep aliases from (default: the one next to OLD)
+    #[arg(long)]
+    pseudonym_map: Option<PathBuf>,
+}
+
+#[derive(Args)]
+struct UpdateArgs {
+    /// Only say whether a newer release exists; change nothing
+    #[arg(long)]
+    check: bool,
+    /// Install without asking (needed when there's no terminal to ask in)
+    #[arg(short, long, conflicts_with = "check")]
+    yes: bool,
 }
 
 fn main() {
+    // the exe an earlier `otinv update` replaced (it can't delete itself)
+    update::remove_leftover();
     let cli = Cli::parse();
     let result = match cli.cmd {
         Cmd::Analyze(a) => analyze(a),
@@ -96,6 +122,7 @@ fn main() {
             print!("{SITE_TEMPLATE}");
             Ok(())
         }
+        Cmd::Update(u) => update::run(u.check, u.yes),
     };
     if let Err(e) = result {
         eprintln!("otinv: {e:#}");
@@ -133,19 +160,27 @@ fn is_capture(p: &Path) -> bool {
     matches!(ext.as_str(), "pcap" | "pcapng" | "cap" | "dmp")
 }
 
-fn write_pseudonym_map(map: &pseudo::Map, out: &Path) -> Result<()> {
-    let mut body = String::from(
-        "# SENSITIVE: this file undoes the pseudonymization. Never share it with the reports.\n\
-         # A real value starting with = + - or @ is written with a leading ' (spreadsheet safety).\n",
-    );
-    body.push_str(&util::csv_line(&["real", "alias"]));
-    body.push('\n');
-    for (real, alias) in map.pairs() {
-        body.push_str(&util::csv_line(&[real, alias]));
-        body.push('\n');
+/// The pseudonym map to continue from: `--pseudonym-map`, else the
+/// pseudonym-map.csv next to the previous run, else none.
+fn previous_map(explicit: Option<&Path>, previous_run: Option<&Path>) -> Result<pseudo::Map> {
+    let candidate = match explicit {
+        Some(p) => Some(p.to_path_buf()),
+        None => previous_run
+            .and_then(Path::parent)
+            .map(|d| d.join("pseudonym-map.csv"))
+            .filter(|p| p.is_file()),
+    };
+    match candidate {
+        Some(p) => {
+            let text =
+                std::fs::read_to_string(&p).with_context(|| format!("Reading {}", p.display()))?;
+            let map =
+                pseudo::Map::from_csv(&text).with_context(|| format!("In {}", p.display()))?;
+            eprintln!("otinv: keeping the aliases from {}", p.display());
+            Ok(map)
+        }
+        None => Ok(pseudo::Map::default()),
     }
-    let p = out.join("pseudonym-map.csv");
-    std::fs::write(&p, body).with_context(|| format!("Writing {}", p.display()))
 }
 
 /// Removes report files an earlier run left in `out` (and `out/share`), so a
@@ -173,10 +208,11 @@ fn clear_outputs(out: &Path) -> Result<()> {
 /// deleted and nothing is kept. The map goes to `out`, outside the share.
 fn write_shared(
     runs: &[&Run],
+    previous_map: &pseudo::Map,
     out: &Path,
     write: impl FnOnce(&[Run], &Path) -> Result<()>,
 ) -> Result<PathBuf> {
-    let map = pseudo::Map::build(runs);
+    let map = pseudo::Map::extend(previous_map, runs);
     let mapped: Vec<Run> = runs.iter().map(|r| map.apply(r)).collect();
     if mapped.iter().any(|r| !map.leaks(r).is_empty()) {
         bail!("pseudonymization missed a value; nothing was written. This is a bug in otinv");
@@ -204,7 +240,8 @@ fn write_shared(
         let _ = std::fs::remove_dir_all(&share);
         return Err(e);
     }
-    write_pseudonym_map(&map, out)?;
+    let p = out.join("pseudonym-map.csv");
+    std::fs::write(&p, map.to_csv()).with_context(|| format!("Writing {}", p.display()))?;
     Ok(share)
 }
 
@@ -280,12 +317,12 @@ fn analyze(a: AnalyzeArgs) -> Result<()> {
 
     std::fs::create_dir_all(&a.out).with_context(|| format!("Creating {}", a.out.display()))?;
     let logs = if a.input.is_dir() {
-        zeek::read_dir(&a.input)?
+        zeek::read_dir(&a.input, a.max_log_mb)?
     } else if a.input.is_file() && is_capture(&a.input) {
         let r = runner::detect(a.runner, a.zeek.as_deref(), &a.docker_image)?;
         let dir = LogDir::new(a.keep_logs.then(|| a.out.join("zeek-logs")))?;
         runner::run(&r, &a.input, &dir.path)?;
-        zeek::read_dir(&dir.path)?
+        zeek::read_dir(&dir.path, a.max_log_mb)?
         // a temporary log folder is deleted here, as `dir` goes out of scope
     } else if a.input.exists() {
         bail!(
@@ -317,7 +354,8 @@ fn analyze(a: AnalyzeArgs) -> Result<()> {
     if a.pseudonymize {
         let mut runs: Vec<&Run> = vec![&run];
         runs.extend(previous.as_ref());
-        write_shared(&runs, &a.out, |mapped, dir| {
+        let old_map = previous_map(a.pseudonym_map.as_deref(), a.previous.as_deref())?;
+        write_shared(&runs, &old_map, &a.out, |mapped, dir| {
             let prev = mapped.get(1);
             let d = prev.map(|p| diff::diff(p, &mapped[0]));
             report::write_all(&mapped[0], prev.zip(d.as_ref()), dir, true).map(|_| ())
@@ -359,7 +397,8 @@ fn diff_cmd(a: DiffArgs) -> Result<()> {
     std::fs::write(a.out.join("diff.txt"), report::text::diff(&old, &new, &d))?;
     std::fs::write(a.out.join("diff.html"), report::html::diff(&old, &new, &d))?;
     if a.pseudonymize {
-        write_shared(&[&old, &new], &a.out, |mapped, dir| {
+        let old_map = previous_map(a.pseudonym_map.as_deref(), Some(&a.old))?;
+        write_shared(&[&old, &new], &old_map, &a.out, |mapped, dir| {
             let (o, n) = (&mapped[0], &mapped[1]);
             let pd = diff::diff(o, n);
             std::fs::write(dir.join("README-SHARED.txt"), report::README_SHARED)?;
