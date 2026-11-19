@@ -1,0 +1,3024 @@
+{
+ "filter": {
+  "event.provider": "zeek"
+ },
+ "range": [
+  0,
+  1793523600
+ ],
+ "results": [
+  {
+   "_id": "lab-0",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793520000000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00001lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.10",
+     "port": 502,
+     "mac": "b8:27:eb:00:00:10"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "modbus"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-1",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793520002000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00002lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.11",
+     "port": 502,
+     "mac": "00:d0:7c:00:00:11"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "modbus"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-2",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793520004000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00003lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.12",
+     "port": 44818,
+     "mac": "00:1d:9c:00:00:12"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "enip"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-3",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793520005000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00004lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.20",
+     "port": 20000,
+     "mac": "00:a0:45:00:00:20"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "dnp3"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-4",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793520300000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00005lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.10",
+     "port": 502,
+     "mac": "b8:27:eb:00:00:10"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "modbus"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-5",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793520302000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00006lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.11",
+     "port": 502,
+     "mac": "00:d0:7c:00:00:11"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "modbus"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-6",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793520304000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00007lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.12",
+     "port": 44818,
+     "mac": "00:1d:9c:00:00:12"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "enip"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-7",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793520305000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00008lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.20",
+     "port": 20000,
+     "mac": "00:a0:45:00:00:20"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "dnp3"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-8",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793520600000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00009lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.10",
+     "port": 502,
+     "mac": "b8:27:eb:00:00:10"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "modbus"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-9",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793520602000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00010lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.11",
+     "port": 502,
+     "mac": "00:d0:7c:00:00:11"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "modbus"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-10",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793520604000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00011lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.12",
+     "port": 44818,
+     "mac": "00:1d:9c:00:00:12"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "enip"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-11",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793520605000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00012lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.20",
+     "port": 20000,
+     "mac": "00:a0:45:00:00:20"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "dnp3"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-12",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793520900000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00013lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.10",
+     "port": 502,
+     "mac": "b8:27:eb:00:00:10"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "modbus"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-13",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793520902000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00014lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.11",
+     "port": 502,
+     "mac": "00:d0:7c:00:00:11"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "modbus"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-14",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793520904000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00015lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.12",
+     "port": 44818,
+     "mac": "00:1d:9c:00:00:12"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "enip"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-15",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793520905000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00016lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.20",
+     "port": 20000,
+     "mac": "00:a0:45:00:00:20"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "dnp3"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-16",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793521200000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00017lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.10",
+     "port": 502,
+     "mac": "b8:27:eb:00:00:10"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "modbus"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-17",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793521202000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00018lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.11",
+     "port": 502,
+     "mac": "00:d0:7c:00:00:11"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "modbus"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-18",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793521204000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00019lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.12",
+     "port": 44818,
+     "mac": "00:1d:9c:00:00:12"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "enip"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-19",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793521205000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00020lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.20",
+     "port": 20000,
+     "mac": "00:a0:45:00:00:20"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "dnp3"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-20",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793521500000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00021lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.10",
+     "port": 502,
+     "mac": "b8:27:eb:00:00:10"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "modbus"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-21",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793521502000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00022lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.11",
+     "port": 502,
+     "mac": "00:d0:7c:00:00:11"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "modbus"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-22",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793521504000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00023lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.12",
+     "port": 44818,
+     "mac": "00:1d:9c:00:00:12"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "enip"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-23",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793521505000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00024lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.20",
+     "port": 20000,
+     "mac": "00:a0:45:00:00:20"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "dnp3"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-24",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793521800000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00025lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.10",
+     "port": 502,
+     "mac": "b8:27:eb:00:00:10"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "modbus"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-25",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793521802000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00026lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.11",
+     "port": 502,
+     "mac": "00:d0:7c:00:00:11"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "modbus"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-26",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793521804000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00027lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.12",
+     "port": 44818,
+     "mac": "00:1d:9c:00:00:12"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "enip"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-27",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793521805000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00028lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.20",
+     "port": 20000,
+     "mac": "00:a0:45:00:00:20"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "dnp3"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-28",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793522100000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00029lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.10",
+     "port": 502,
+     "mac": "b8:27:eb:00:00:10"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "modbus"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-29",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793522102000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00030lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.11",
+     "port": 502,
+     "mac": "00:d0:7c:00:00:11"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "modbus"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-30",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793522104000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00031lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.12",
+     "port": 44818,
+     "mac": "00:1d:9c:00:00:12"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "enip"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-31",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793522105000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00032lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.20",
+     "port": 20000,
+     "mac": "00:a0:45:00:00:20"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "dnp3"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-32",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793522400000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00033lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.10",
+     "port": 502,
+     "mac": "b8:27:eb:00:00:10"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "modbus"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-33",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793522402000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00034lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.11",
+     "port": 502,
+     "mac": "00:d0:7c:00:00:11"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "modbus"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-34",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793522404000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00035lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.12",
+     "port": 44818,
+     "mac": "00:1d:9c:00:00:12"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "enip"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-35",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793522405000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00036lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.20",
+     "port": 20000,
+     "mac": "00:a0:45:00:00:20"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "dnp3"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-36",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793522700000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00037lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.10",
+     "port": 502,
+     "mac": "b8:27:eb:00:00:10"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "modbus"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-37",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793522702000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00038lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.11",
+     "port": 502,
+     "mac": "00:d0:7c:00:00:11"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "modbus"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-38",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793522704000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00039lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.12",
+     "port": 44818,
+     "mac": "00:1d:9c:00:00:12"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "enip"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-39",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793522705000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00040lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.20",
+     "port": 20000,
+     "mac": "00:a0:45:00:00:20"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "dnp3"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-40",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793523000000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00041lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.10",
+     "port": 502,
+     "mac": "b8:27:eb:00:00:10"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "modbus"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-41",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793523002000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00042lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.11",
+     "port": 502,
+     "mac": "00:d0:7c:00:00:11"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "modbus"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-42",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793523004000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00043lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.12",
+     "port": 44818,
+     "mac": "00:1d:9c:00:00:12"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "enip"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-43",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793523005000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00044lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.20",
+     "port": 20000,
+     "mac": "00:a0:45:00:00:20"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "dnp3"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-44",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793523300000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00045lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.10",
+     "port": 502,
+     "mac": "b8:27:eb:00:00:10"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "modbus"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-45",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793523302000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00046lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.11",
+     "port": 502,
+     "mac": "00:d0:7c:00:00:11"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "modbus"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-46",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793523304000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00047lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.12",
+     "port": 44818,
+     "mac": "00:1d:9c:00:00:12"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "enip"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-47",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793523305000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00048lab",
+     "conn": {
+      "duration": 290.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.20",
+     "port": 20000,
+     "mac": "00:a0:45:00:00:20"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "dnp3"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-48",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793521800000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00049lab",
+     "conn": {
+      "duration": 1.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.10",
+     "port": 502,
+     "mac": "b8:27:eb:00:00:10"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "modbus"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-49",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793521810000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00050lab",
+     "conn": {
+      "duration": 1.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.20",
+     "port": 20000,
+     "mac": "00:a0:45:00:00:20"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "dnp3"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-50",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793520600000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00051lab",
+     "conn": {
+      "duration": 40.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.30",
+     "port": 49152,
+     "mac": "00:50:56:00:00:30"
+    },
+    "destination": {
+     "ip": "10.10.1.10",
+     "port": 8080,
+     "mac": "b8:27:eb:00:00:10"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "http"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-51",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793520610000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00052lab",
+     "conn": {
+      "duration": 1.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "Dd",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.30",
+     "port": 49152,
+     "mac": "00:50:56:00:00:30"
+    },
+    "destination": {
+     "ip": "10.10.1.12",
+     "port": 44818,
+     "mac": "00:1d:9c:00:00:12"
+    },
+    "network": {
+     "transport": "udp",
+     "protocol": [
+      "enip"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-52",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793520005000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00053lab",
+     "conn": {
+      "duration": 1.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "Dd",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.0.1",
+     "port": 53,
+     "mac": "00:11:22:33:44:01"
+    },
+    "network": {
+     "transport": "udp",
+     "protocol": [
+      "dns"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-53",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793520006000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00054lab",
+     "conn": {
+      "duration": 1.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "Dd",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.30",
+     "port": 49152,
+     "mac": "00:50:56:00:00:30"
+    },
+    "destination": {
+     "ip": "10.10.0.1",
+     "port": 123,
+     "mac": "00:11:22:33:44:01"
+    },
+    "network": {
+     "transport": "udp",
+     "protocol": [
+      "ntp"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-54",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793520007000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00055lab",
+     "conn": {
+      "duration": 1.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "Dd",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.3.5",
+     "port": 49152,
+     "mac": "00:11:22:33:44:01"
+    },
+    "destination": {
+     "ip": "10.10.0.1",
+     "port": 53,
+     "mac": "00:11:22:33:44:01"
+    },
+    "network": {
+     "transport": "udp",
+     "protocol": [
+      "dns"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-55",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793520100000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00056lab",
+     "conn": {
+      "duration": 1.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.3.5",
+     "port": 49152,
+     "mac": "00:11:22:33:44:01"
+    },
+    "destination": {
+     "ip": "198.51.100.20",
+     "port": 443,
+     "mac": "00:11:22:33:44:01"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "ssl"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-56",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793520900000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00057lab",
+     "conn": {
+      "duration": 1.0,
+      "orig_bytes": 120,
+      "resp_bytes": 0,
+      "conn_state": "S0",
+      "history": "S",
+      "resp_pkts": 0
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.99",
+     "port": 502
+    },
+    "network": {
+     "transport": "tcp"
+    }
+   }
+  },
+  {
+   "_id": "lab-57",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793522000000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00058lab",
+     "conn": {
+      "duration": 30.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.3.5",
+     "port": 49152,
+     "mac": "00:11:22:33:44:01"
+    },
+    "destination": {
+     "ip": "10.10.1.10",
+     "port": 502,
+     "mac": "b8:27:eb:00:00:10"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "modbus"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-58",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793522100000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00059lab",
+     "conn": {
+      "duration": 600.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "203.0.113.50",
+     "port": 49152,
+     "mac": "00:11:22:33:44:01"
+    },
+    "destination": {
+     "ip": "10.10.2.20",
+     "port": 5900,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "rfb"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-59",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793522200000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00060lab",
+     "conn": {
+      "duration": 60.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.30",
+     "port": 49152,
+     "mac": "00:50:56:00:00:30"
+    },
+    "destination": {
+     "ip": "10.10.2.20",
+     "port": 5900,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "rfb"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-60",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793522300000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00061lab",
+     "conn": {
+      "duration": 1.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.50",
+     "port": 502,
+     "mac": "00:90:e8:00:00:50"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "modbus"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-61",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793522360000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00062lab",
+     "conn": {
+      "duration": 1.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.50",
+     "port": 502,
+     "mac": "00:90:e8:00:00:50"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "modbus"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-62",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793522420000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00063lab",
+     "conn": {
+      "duration": 1.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "10.10.1.50",
+     "port": 502,
+     "mac": "00:90:e8:00:00:50"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "modbus"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-63",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793522400000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00064lab",
+     "conn": {
+      "duration": 1.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "198.51.100.66",
+     "port": 49152,
+     "mac": "00:11:22:33:44:01"
+    },
+    "destination": {
+     "ip": "10.10.1.10",
+     "port": 502,
+     "mac": "b8:27:eb:00:00:10"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "modbus"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-64",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793522500000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00065lab",
+     "conn": {
+      "duration": 20.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.30",
+     "port": 49152,
+     "mac": "00:50:56:00:00:30"
+    },
+    "destination": {
+     "ip": "10.10.1.11",
+     "port": 21,
+     "mac": "00:d0:7c:00:00:11"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "ftp"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-65",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793522550000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00066lab",
+     "conn": {
+      "duration": 1.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.30",
+     "port": 49152,
+     "mac": "00:50:56:00:00:30"
+    },
+    "destination": {
+     "ip": "10.10.1.11",
+     "port": 502,
+     "mac": "00:d0:7c:00:00:11"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "modbus"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-66",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793522600000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00067lab",
+     "conn": {
+      "duration": 30.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.30",
+     "port": 49152,
+     "mac": "00:50:56:00:00:30"
+    },
+    "destination": {
+     "ip": "10.10.1.11",
+     "port": 23,
+     "mac": "00:d0:7c:00:00:11"
+    },
+    "network": {
+     "transport": "tcp"
+    }
+   }
+  },
+  {
+   "_id": "lab-67",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793522650000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00068lab",
+     "conn": {
+      "duration": 5.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.30",
+     "port": 49152,
+     "mac": "00:50:56:00:00:30"
+    },
+    "destination": {
+     "ip": "10.10.1.10",
+     "port": 8080,
+     "mac": "b8:27:eb:00:00:10"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "http"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-68",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793522680000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00069lab",
+     "conn": {
+      "duration": 1.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.30",
+     "port": 49152,
+     "mac": "00:50:56:00:00:30"
+    },
+    "destination": {
+     "ip": "10.10.1.20",
+     "port": 20000,
+     "mac": "00:a0:45:00:00:20"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "dnp3"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-69",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793522690000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00070lab",
+     "conn": {
+      "duration": 900.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.30",
+     "port": 49152,
+     "mac": "00:50:56:00:00:30"
+    },
+    "destination": {
+     "ip": "198.51.100.30",
+     "port": 5938,
+     "mac": "00:11:22:33:44:01"
+    },
+    "network": {
+     "transport": "tcp"
+    }
+   }
+  },
+  {
+   "_id": "lab-70",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793522700000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "conn"
+    },
+    "zeek": {
+     "uid": "C00071lab",
+     "conn": {
+      "duration": 1.0,
+      "orig_bytes": 120,
+      "resp_bytes": 300,
+      "conn_state": "SF",
+      "history": "ShADadFf",
+      "resp_pkts": 4
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152,
+     "mac": "00:0c:29:00:00:20"
+    },
+    "destination": {
+     "ip": "198.51.100.20",
+     "port": 443,
+     "mac": "00:11:22:33:44:01"
+    },
+    "network": {
+     "transport": "tcp",
+     "protocol": [
+      "ssl"
+     ]
+    }
+   }
+  },
+  {
+   "_id": "lab-71",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793520001000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "modbus"
+    },
+    "zeek": {
+     "uid": "C00001lab",
+     "modbus": {
+      "func": "READ_HOLDING_REGISTERS",
+      "network_direction": "request"
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152
+    },
+    "destination": {
+     "ip": "10.10.1.10",
+     "port": 502
+    }
+   }
+  },
+  {
+   "_id": "lab-72",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793520001010,
+    "event": {
+     "provider": "zeek",
+     "dataset": "modbus"
+    },
+    "zeek": {
+     "uid": "C00001lab",
+     "modbus": {
+      "func": "READ_HOLDING_REGISTERS",
+      "network_direction": "response"
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152
+    },
+    "destination": {
+     "ip": "10.10.1.10",
+     "port": 502
+    }
+   }
+  },
+  {
+   "_id": "lab-73",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793520003000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "modbus"
+    },
+    "zeek": {
+     "uid": "C00002lab",
+     "modbus": {
+      "func": "READ_COILS",
+      "network_direction": "request"
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152
+    },
+    "destination": {
+     "ip": "10.10.1.11",
+     "port": 502
+    }
+   }
+  },
+  {
+   "_id": "lab-74",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793520003010,
+    "event": {
+     "provider": "zeek",
+     "dataset": "modbus"
+    },
+    "zeek": {
+     "uid": "C00002lab",
+     "modbus": {
+      "func": "READ_COILS",
+      "network_direction": "response"
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152
+    },
+    "destination": {
+     "ip": "10.10.1.11",
+     "port": 502
+    }
+   }
+  },
+  {
+   "_id": "lab-75",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793520301000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "modbus"
+    },
+    "zeek": {
+     "uid": "C00005lab",
+     "modbus": {
+      "func": "READ_HOLDING_REGISTERS",
+      "network_direction": "request"
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152
+    },
+    "destination": {
+     "ip": "10.10.1.10",
+     "port": 502
+    }
+   }
+  },
+  {
+   "_id": "lab-76",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793520301010,
+    "event": {
+     "provider": "zeek",
+     "dataset": "modbus"
+    },
+    "zeek": {
+     "uid": "C00005lab",
+     "modbus": {
+      "func": "READ_HOLDING_REGISTERS",
+      "network_direction": "response"
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152
+    },
+    "destination": {
+     "ip": "10.10.1.10",
+     "port": 502
+    }
+   }
+  },
+  {
+   "_id": "lab-77",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793520303000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "modbus"
+    },
+    "zeek": {
+     "uid": "C00006lab",
+     "modbus": {
+      "func": "READ_COILS",
+      "network_direction": "request"
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152
+    },
+    "destination": {
+     "ip": "10.10.1.11",
+     "port": 502
+    }
+   }
+  },
+  {
+   "_id": "lab-78",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793520303010,
+    "event": {
+     "provider": "zeek",
+     "dataset": "modbus"
+    },
+    "zeek": {
+     "uid": "C00006lab",
+     "modbus": {
+      "func": "READ_COILS",
+      "network_direction": "response"
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152
+    },
+    "destination": {
+     "ip": "10.10.1.11",
+     "port": 502
+    }
+   }
+  },
+  {
+   "_id": "lab-79",
+   "_index": "arkime_sessions3-261101",
+   "_score": 0.0,
+   "_source": {
+    "timestamp": 1793520601000,
+    "event": {
+     "provider": "zeek",
+     "dataset": "modbus"
+    },
+    "zeek": {
+     "uid": "C00009lab",
+     "modbus": {
+      "func": "READ_HOLDING_REGISTERS",
+      "network_direction": "request"
+     }
+    },
+    "source": {
+     "ip": "10.10.2.20",
+     "port": 49152
+    },
+    "destination": {
+     "ip": "10.10.1.10",
+     "port": 502
+    }
+   }
+  }
+ ],
+ "total": {
+  "value": 161,
+  "relation": "eq"
+ },
+ "shards": {
+  "total": 1,
+  "successful": 1,
+  "skipped": 0,
+  "failed": 0
+ },
+ "timed_out": false
+}

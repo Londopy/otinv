@@ -9,6 +9,7 @@ pub mod checks;
 pub mod config;
 pub mod diff;
 pub mod londopy;
+pub mod malcolm;
 pub mod model;
 pub mod net;
 pub mod oui;

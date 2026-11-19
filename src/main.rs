@@ -4,7 +4,7 @@ use otinv::config::{Rules, Site, DEFAULT_RULES, SITE_TEMPLATE};
 use otinv::model::Run;
 use otinv::oui::Oui;
 use otinv::runner::{self, RunnerChoice, DEFAULT_IMAGE};
-use otinv::{diff, pipeline, pseudo, report, timefmt, util, zeek};
+use otinv::{diff, malcolm, pipeline, pseudo, report, timefmt, util, zeek};
 use std::path::{Path, PathBuf};
 
 // the cli's own module, not the library's: the analysis code stays network-free
@@ -24,7 +24,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Cmd {
-    /// Analyze a capture (.pcap/.pcapng) or a folder of zeek logs
+    /// Analyze a capture (.pcap/.pcapng), a folder of zeek logs, or a Malcolm export
     Analyze(AnalyzeArgs),
     /// Compare two saved runs (run.londopy files)
     Diff(DiffArgs),
@@ -38,7 +38,7 @@ enum Cmd {
 
 #[derive(Args)]
 struct AnalyzeArgs {
-    /// A capture file, or a folder of zeek logs (conn.log, modbus.log, ...)
+    /// A capture, a folder of zeek logs (conn.log, modbus.log, ...), or a Malcolm export
     input: PathBuf,
     /// Folder for the reports (use a new one per run, e.g. otinv-2026-11)
     #[arg(short, long, default_value = "otinv-report")]
@@ -148,6 +148,28 @@ fn same_file(a: &Path, b: &Path) -> bool {
         (Ok(x), Ok(y)) => x == y,
         _ => false,
     }
+}
+
+/// A folder of zeek logs, or else the pages of a Malcolm export.
+fn read_folder(dir: &Path, max_mb: u64) -> Result<Vec<zeek::Log>> {
+    let paths: Vec<PathBuf> = std::fs::read_dir(dir)
+        .with_context(|| format!("Reading {}", dir.display()))?
+        .filter_map(|e| e.ok().map(|e| e.path()))
+        .collect();
+    if !paths.iter().any(|p| malcolm::is_export(p)) {
+        return zeek::read_dir(dir, max_mb);
+    }
+    let has_logs = paths.iter().any(|p| {
+        let name = p.file_name().and_then(|n| n.to_str()).unwrap_or_default();
+        name.starts_with("conn.") && name.ends_with(".log")
+    });
+    if has_logs {
+        bail!(
+            "{} has both zeek logs and a Malcolm export; put them in separate folders",
+            dir.display()
+        );
+    }
+    malcolm::read(dir, max_mb)
 }
 
 fn is_capture(p: &Path) -> bool {
@@ -315,7 +337,9 @@ fn analyze(a: AnalyzeArgs) -> Result<()> {
 
     std::fs::create_dir_all(&a.out).with_context(|| format!("Creating {}", a.out.display()))?;
     let logs = if a.input.is_dir() {
-        zeek::read_dir(&a.input, a.max_log_mb)?
+        read_folder(&a.input, a.max_log_mb)?
+    } else if a.input.is_file() && malcolm::is_export(&a.input) {
+        malcolm::read(&a.input, a.max_log_mb)?
     } else if a.input.is_file() && is_capture(&a.input) {
         let r = runner::detect(a.runner, a.zeek.as_deref(), &a.docker_image)?;
         let dir = LogDir::new(a.keep_logs.then(|| a.out.join("zeek-logs")))?;
@@ -324,7 +348,8 @@ fn analyze(a: AnalyzeArgs) -> Result<()> {
         // a temporary log folder is deleted here, as `dir` goes out of scope
     } else if a.input.exists() {
         bail!(
-            "{} isn't a capture (.pcap, .pcapng) or a folder of zeek logs",
+            "{} isn't a capture (.pcap, .pcapng), a Malcolm export (.json, .ndjson) \
+             or a folder of zeek logs",
             a.input.display()
         );
     } else {

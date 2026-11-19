@@ -6,5 +6,5 @@
 #open	2026-11-01-08-00-00
 #fields	ts	uids	client_addr	server_addr	mac	host_name	assigned_addr	lease_time	msg_types
 #types	time	set[string]	addr	addr	string	string	addr	interval	vector[string]
-1793520002.000000	C00000dhcp	10.10.3.5	10.10.0.1	3c:52:82:00:00:05	OFFICE-PC1	10.10.3.5	86400.000000	REQUEST,ACK
+1793520002.000000	C00000dhcp	0.0.0.0	10.10.0.1	3c:52:82:00:00:05	OFFICE-PC1	10.10.3.5	86400.000000	REQUEST,ACK
 #close	2026-11-01-09-00-00

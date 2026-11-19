@@ -5,6 +5,8 @@ Two captures of the same small lab network, described as zeek would log them:
   lab-baseline/  a normal hour: an HMI polling three PLCs over Modbus and
                  EtherNet/IP and an RTU over DNP3, an engineering laptop, a
                  router that also does DNS/NTP, an office PC.
+  malcolm-bad/   lab-bad as a Malcolm export: the same records with Malcolm's
+                 field names, as a /mapi/document page and an NDJSON page.
   lab-bad/       the same hour plus every scripted bad scenario from the spec:
                  a rogue Modbus write (after a little polling, plus a refused
                  write), VNC reachable from the internet, a new device, Modbus
@@ -82,6 +84,7 @@ class Lab:
         self.http = []
         self.dhcp = []
         self.identity = []
+        self.modbus_ident = []
         self.n = 0
 
     def uid(self):
@@ -147,6 +150,12 @@ class Lab:
         if self.http:
             write_tsv(d, "http", "ts uid id.orig_h id.orig_p id.resp_h id.resp_p method host uri username password status_code",
                       "time string addr port addr port string string string string string count", self.http)
+        if self.modbus_ident:
+            write_tsv(d, "modbus_read_device_identification",
+                      "ts uid id.orig_h id.orig_p id.resp_h id.resp_p is_orig source_h source_p "
+                      "destination_h destination_p func object_id_code object_id object_value",
+                      "time string addr port addr port bool addr port addr port string string string string",
+                      self.modbus_ident)
         # ICSNPP-ENIP identity replies, in zeek's JSON format (tests the JSON reader)
         with open(os.path.join(d, "cip_identity.log"), "w", newline="\n") as f:
             for rec in self.identity:
@@ -194,7 +203,7 @@ def baseline(lab, firmware="30.11"):
     # the HMI probes an empty address: must not become a device
     lab.c(900.0, "hmi", "10.10.1.99", 502, answered=False)
     lab.dhcp.append(
-        [f"{BASE + 2.0:.6f}", "C00000dhcp", "10.10.3.5", "10.10.0.1", "3c:52:82:00:00:05",
+        [f"{BASE + 2.0:.6f}", "C00000dhcp", "0.0.0.0", "10.10.0.1", "3c:52:82:00:00:05",
          "OFFICE-PC1", "10.10.3.5", "86400.000000", "REQUEST,ACK"]
     )
 
@@ -223,6 +232,16 @@ def bad(lab):
         [f"{BASE + 2500.5:.6f}", u, HOSTS["ews"][0], "49152", HOSTS["plc2"][0], "21",
          "admin", SECRET, "PASS", SECRET, "230", "Password required for admin"]
     )
+    # the laptop asks PLC2 who it is; ICSNPP logs the request and each object
+    u = lab.c(2550.0, "ews", "plc2", 502, service="modbus")
+    ews, plc2 = HOSTS["ews"][0], HOSTS["plc2"][0]
+    for orig, code, name, value in (("T", "0x00", "Basic Device Identification", "-"),
+                                    ("F", "0x00", "VendorName", "AutomationDirect"),
+                                    ("F", "0x01", "ProductCode", "C0-12DD1E-D"),
+                                    ("F", "0x02", "MajorMinorVersion", "3.41")):
+        src, sp, dst, dp = (ews, "49152", plc2, "502") if orig == "T" else (plc2, "502", ews, "49152")
+        lab.modbus_ident.append([f"{BASE + 2550.5:.6f}", u, ews, "49152", plc2, "502", orig,
+                                 src, sp, dst, dp, "ENCAP_INTERFACE_TRANSPORT", code, name, value])
     lab.c(2600.0, "ews", "plc2", 23, service="-", dur=30)
     u = lab.c(2650.0, "ews", "plc1", 8080, service="http", dur=5)
     lab.http.append(
@@ -238,6 +257,104 @@ def bad(lab):
     lab.c(2700.0, "hmi", "198.51.100.20", 443, service="ssl")
 
 
+def malcolm_doc(dataset, ts, uid, orig, resp, extra):
+    """One document the way Malcolm's Logstash pipeline stores a zeek record."""
+    oh, op, om = orig
+    rh, rp, rm = resp
+    doc = {
+        "timestamp": round(float(ts) * 1000),
+        "event": {"provider": "zeek", "dataset": dataset},
+        "zeek": {"uid": uid},
+        "source": {"ip": oh},
+        "destination": {"ip": rh},
+    }
+    for side, port, mac in (("source", op, om), ("destination", rp, rm)):
+        if port not in (None, "-"):
+            doc[side]["port"] = int(port)
+        if mac not in (None, "-"):
+            doc[side]["mac"] = mac
+    for key, value in extra.items():
+        target = doc
+        *path, last = key.split(".")
+        for p in path:
+            target = target.setdefault(p, {})
+        target[last] = value
+    return doc
+
+
+def write_malcolm(lab, name):
+    """lab as a Malcolm export: page1.json is a /mapi/document response,
+    page2.ndjson the rest of the documents one per line."""
+    docs = []
+    for r in lab.conn:
+        (ts, uid, oh, op, rh, rp, proto, service, dur, ob, rb, state, _, _, _, hist,
+         _, _, rpk, _, _, om, rm) = r
+        extra = {"network.transport": proto, "zeek.conn.duration": float(dur),
+                 "zeek.conn.orig_bytes": int(ob), "zeek.conn.resp_bytes": int(rb),
+                 "zeek.conn.conn_state": state, "zeek.conn.history": hist,
+                 "zeek.conn.resp_pkts": int(rpk)}
+        if service != "-":
+            extra["network.protocol"] = [service]
+        docs.append(malcolm_doc("conn", ts, uid, (oh, op, om), (rh, rp, rm), extra))
+    for ts, uid, oh, op, rh, rp, func, pdu, _ in lab.modbus:
+        docs.append(malcolm_doc("modbus", ts, uid, (oh, op, None), (rh, rp, None), {
+            "zeek.modbus.func": func,
+            "zeek.modbus.network_direction": {"REQ": "request", "RESP": "response"}[pdu]}))
+    for ts, uid, oh, op, rh, rp, req, rep, _ in lab.dnp3:
+        extra = {"zeek.dnp3.fc_reply": rep}
+        if req != "-":
+            extra["zeek.dnp3.fc_request"] = req
+        docs.append(malcolm_doc("dnp3", ts, uid, (oh, op, None), (rh, rp, None), extra))
+    for ts, uid, oh, op, rh, rp, user, pw, *_ in lab.ftp:
+        docs.append(malcolm_doc("ftp", ts, uid, (oh, op, None), (rh, rp, None),
+                                {"related.user": [user], "related.password": [pw]}))
+    for ts, uid, oh, op, rh, rp, _, _, _, user, pw, _ in lab.http:
+        docs.append(malcolm_doc("http", ts, uid, (oh, op, None), (rh, rp, None),
+                                {"related.user": [user], "related.password": [pw]}))
+    for ts, uid, client, server, mac, host, assigned, *_ in lab.dhcp:
+        docs.append(malcolm_doc("dhcp", ts, uid, (client, 68, mac), (server, 67, None), {
+            "zeek.dhcp.host_name": host, "zeek.dhcp.assigned_ip": assigned, "zeek.dhcp.mac": mac}))
+    # ICSNPP logs: Malcolm keeps each packet's own direction in source/destination
+    for rec in lab.identity:
+        keep = ["vendor_id", "vendor_name", "device_type_name", "product_name", "revision",
+                "serial_number", "socket_address"]
+        reply = not rec["is_orig"]
+        sp, dp = (rec["id.resp_p"], rec["id.orig_p"]) if reply else (rec["id.orig_p"], rec["id.resp_p"])
+        docs.append(malcolm_doc(
+            "cip_identity", rec["ts"], rec["uid"],
+            (rec["source_h"], sp, None), (rec["destination_h"], dp, None),
+            {"network.is_orig": rec["is_orig"], **{f"zeek.cip_identity.{k}": rec[k] for k in keep}}))
+    for ts, uid, _, _, _, _, orig, src, sp, dst, dp, _, code, obj, value in lab.modbus_ident:
+        extra = {"network.is_orig": orig == "T",
+                 "zeek.modbus_read_device_identification.object_id_code": code,
+                 "zeek.modbus_read_device_identification.object_id": obj}
+        if value != "-":
+            extra["zeek.modbus_read_device_identification.object_value"] = value
+        docs.append(malcolm_doc("modbus_read_device_identification", ts, uid,
+                                (src, sp, None), (dst, dp, None), extra))
+    # Malcolm folds zeek's conn_long records into conn, flagged zeek.conn.long;
+    # one for the internet VNC session must not count as a second connection
+    vnc = next(r for r in lab.conn if r[5] == "5900" and r[2] == "203.0.113.50")
+    docs.append(malcolm_doc("conn", vnc[0], vnc[1], (vnc[2], vnc[3], vnc[21]), (vnc[4], vnc[5], vnc[22]), {
+        "network.transport": "tcp", "network.protocol": ["rfb"], "zeek.conn.long": "true",
+        "zeek.conn.duration": 300.0, "zeek.conn.orig_bytes": 50, "zeek.conn.resp_bytes": 900,
+        "zeek.conn.history": "ShADad", "zeek.conn.conn_state": "S1", "zeek.conn.resp_pkts": 3}))
+    d = os.path.join(HERE, name)
+    os.makedirs(d, exist_ok=True)
+    half = len(docs) // 2
+    page1 = {"filter": {"event.provider": "zeek"}, "range": [0, 1793523600],
+             "results": [{"_id": f"lab-{i}", "_index": "arkime_sessions3-261101", "_score": 0.0,
+                          "_source": doc} for i, doc in enumerate(docs[:half])],
+             "total": {"value": len(docs), "relation": "eq"},
+             "shards": {"total": 1, "successful": 1, "skipped": 0, "failed": 0}, "timed_out": False}
+    with open(os.path.join(d, "page1.json"), "w", newline="\n") as f:
+        json.dump(page1, f, indent=1)
+        f.write("\n")
+    with open(os.path.join(d, "page2.ndjson"), "w", newline="\n") as f:
+        for doc in docs[half:]:
+            f.write(json.dumps(doc) + "\n")
+
+
 if __name__ == "__main__":
     b = Lab()
     baseline(b)
@@ -245,4 +362,5 @@ if __name__ == "__main__":
     x = Lab()
     bad(x)
     x.write("lab-bad")
-    print("wrote lab-baseline/ and lab-bad/")
+    write_malcolm(x, "malcolm-bad")
+    print("wrote lab-baseline/, lab-bad/ and malcolm-bad/")

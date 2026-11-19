@@ -8,6 +8,15 @@ what appears on its GitHub release page. Validated in CI by
 
 ## [Unreleased]
 
+### Added
+
+- Malcolm exports as input: the zeek documents from Malcolm's `/mapi/document` API, saved as JSON or NDJSON, give the same report as the logs, with warnings for incomplete or overlapping pages.
+- Releases install, check and uninstall the setup.exe and MSIs on a Windows runner before they're published.
+
+### Fixed
+
+- Modbus device identification read the firmware version only under the spec's object name; ICSNPP calls it `MajorMinorVersion`.
+
 ## [0.1.0] - 2026-11-19
 
 ### Added

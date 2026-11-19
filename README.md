@@ -116,8 +116,11 @@ runners use the same Zeek command, but no test runs them.
 # a capture: otinv runs zeek offline, then analyzes the logs it wrote
 otinv analyze capture.pcap -o otinv-2026-11
 
-# logs you already have (from zeek, Malcolm, or a sensor)
+# logs you already have (from zeek or a sensor)
 otinv analyze /path/to/zeek/logs -o otinv-2026-11
+
+# an export from Malcolm (see "From Malcolm" below)
+otinv analyze malcolm-export/ -o otinv-2026-11
 
 # next month: flag new devices and write diff.txt / diff.html
 otinv analyze capture-dec.pcap -o otinv-2026-12 --previous otinv-2026-11/run.londopy
@@ -155,6 +158,49 @@ unless you raise `--max-log-mb`.
 For MAC addresses in `conn.log`, run Zeek with
 `policy/protocols/conn/mac-logging`. otinv does that itself when it runs
 Zeek.
+
+### From Malcolm
+
+Malcolm keeps its zeek logs on disk only briefly, so export the zeek
+documents from its search index instead, with Malcolm's document API. Save
+each response as a `.json` file in one folder, then point otinv at the folder
+(or at a single file):
+
+```sh
+curl -sk -u <user> https://<malcolm>/mapi/document \
+  -H 'Content-Type: application/json' \
+  -d '{"doctype": "network", "from": "2026-11-01", "to": "2026-11-02", "limit": 500,
+       "sort": ["firstPacket:asc", "event.id:asc"],
+       "filter": {"event.provider": "zeek",
+                  "event.dataset": ["conn", "modbus", "dnp3", "ftp", "http", "dhcp",
+                                    "cip_identity", "modbus_read_device_identification"]}}' \
+  > malcolm-export/page1.json
+```
+
+The API returns at most `limit` documents per call. Add `"offset": 500`,
+`1000`, ... for the next pages; keep the sort, so the pages don't overlap or
+skip. OpenSearch stops at 10,000 per query, so split a longer time range into
+several queries. Documents saved one per line (`.ndjson`) work too. Save the
+files as UTF-8: in Windows PowerShell 5, `>` writes UTF-16, which otinv
+refuses.
+
+otinv warns when a page says the search timed out or failed on some shards,
+when the pages hold fewer documents than Malcolm matched, and when a document
+appears in more than one page (it's counted once).
+
+otinv maps Malcolm's field names back to zeek's, so the report is the same
+as from the logs. Evidence cites the export file and the document's number
+in it (its line in an `.ndjson` file, its position in a page's `results`),
+plus the zeek `uid` for finding the record in Malcolm. Only zeek documents
+are read; Arkime sessions and Suricata alerts are skipped. Malcolm also files
+the login of a web form under the same field as a basic-auth login, so from
+an export both show as readable logins. The mapping follows Malcolm 26.10's
+Logstash pipeline. It's tested against an export built to that mapping, not
+yet against a live Malcolm.
+
+The export holds everything Malcolm indexed, including captured passwords
+and full URLs, which otinv drops as it reads. Treat it like the raw logs:
+keep it off shared drives and delete it after the run.
 
 ## Configuration
 

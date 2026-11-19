@@ -6,5 +6,5 @@
 #open	2026-11-01-08-00-00
 #fields	ts	uid	id.orig_h	id.orig_p	id.resp_h	id.resp_p	method	host	uri	username	password	status_code
 #types	time	string	addr	port	addr	port	string	string	string	string	string	count
-1793522650.200000	C00067lab	10.10.2.30	49152	10.10.1.10	8080	GET	10.10.1.10	/login?token=Sup3rSecretLabPw	admin	Sup3rSecretLabPw	200
+1793522650.200000	C00068lab	10.10.2.30	49152	10.10.1.10	8080	GET	10.10.1.10	/login?token=Sup3rSecretLabPw	admin	Sup3rSecretLabPw	200
 #close	2026-11-01-09-00-00

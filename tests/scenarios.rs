@@ -472,3 +472,63 @@ fn hostile_strings_are_neutralized_in_csv_and_html() {
     assert!(!html.contains("<script>alert"), "unescaped name in HTML");
     assert!(html.contains("&lt;script&gt;"));
 }
+
+#[test]
+fn malcolm_export_gives_the_same_report_as_the_logs() {
+    let base = baseline();
+    let from_logs = bad(&base);
+    let logs = otinv::malcolm::read(&fixture("malcolm-bad"), zeek::DEFAULT_MAX_LOG_MB).unwrap();
+    let rules = Rules::builtin();
+    let from_malcolm = pipeline::analyze(&pipeline::Inputs {
+        logs: &logs,
+        rules: &rules,
+        site: &Site::default(),
+        oui: &Oui::builtin(),
+        previous: Some(&base),
+        source: "lab-bad".into(),
+        generated: GENERATED.into(),
+    });
+
+    // everything except where the evidence points (and which files were read)
+    fn comparable(run: &Run) -> serde_json::Value {
+        fn blank(v: &mut serde_json::Value) {
+            match v {
+                serde_json::Value::Object(o) => {
+                    for key in ["file", "line", "uid"] {
+                        o.remove(key);
+                    }
+                    o.values_mut().for_each(blank);
+                }
+                serde_json::Value::Array(a) => a.iter_mut().for_each(blank),
+                _ => {}
+            }
+        }
+        let mut v = serde_json::to_value(run).unwrap();
+        v["logs"] = serde_json::Value::Null;
+        blank(&mut v);
+        v
+    }
+    let (a, b) = (comparable(&from_logs), comparable(&from_malcolm));
+    if a != b {
+        for key in ["assets", "edges", "findings", "externals", "shared_macs"] {
+            assert_eq!(a[key], b[key], "{key} differ");
+        }
+        assert_eq!(a, b);
+    }
+    let plc2 = from_malcolm.asset("10.10.1.11").unwrap();
+    assert_eq!(plc2.identity["firmware"], "3.41");
+
+    // evidence points into the export, by file and document number
+    let w = from_malcolm
+        .findings
+        .iter()
+        .find(|f| f.rule == "UNEXPECTED-WRITE")
+        .unwrap();
+    assert!(w
+        .evidence
+        .iter()
+        .all(|e| e.file.starts_with("page") && e.uid.is_some()));
+    assert!(!serde_json::to_string(&from_malcolm)
+        .unwrap()
+        .contains(SECRET));
+}

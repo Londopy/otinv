@@ -92,7 +92,7 @@ fn evidence_table(o: &mut String, ev: &[Evidence], total: usize) {
     let _ = write!(
         o,
         "<details><summary>Evidence ({shown})</summary><div class=\"scroll\"><table>\
-         <tr><th>Log line</th><th>Time</th><th>From</th><th>To</th><th>What</th><th>Zeek uid</th></tr>"
+         <tr><th>Source</th><th>Time</th><th>From</th><th>To</th><th>What</th><th>Zeek uid</th></tr>"
     );
     for e in ev {
         let _ = write!(

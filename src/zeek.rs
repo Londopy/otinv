@@ -140,7 +140,8 @@ impl Record {
         self.get("uid")
     }
 
-    #[cfg(test)]
+    /// A record built from (field, value) pairs, with the same redaction as
+    /// a parsed log line.
     pub fn from_pairs(line: usize, pairs: &[(&str, &str)]) -> Self {
         let mut r = Record {
             line,
@@ -185,7 +186,7 @@ pub const DEFAULT_MAX_LOG_MB: u64 = 4096;
 
 /// Longest line kept. No zeek log line comes close; a longer one is skipped
 /// (and counted) without ever being held in memory.
-const MAX_LINE: usize = 1 << 20;
+pub(crate) const MAX_LINE: usize = 1 << 20;
 
 /// Reads the zeek logs otinv uses from a directory (not recursive). Other
 /// logs are never opened; compressed ones are skipped with a warning; a file
@@ -268,7 +269,7 @@ pub fn read_file(path: &Path) -> Result<Log> {
 /// Reads one line (without the newline) into `buf`, holding at most
 /// MAX_LINE bytes. Some(true): a line; Some(false): a line too long, skipped;
 /// None: end of input.
-fn next_line(r: &mut impl BufRead, buf: &mut Vec<u8>) -> std::io::Result<Option<bool>> {
+pub(crate) fn next_line(r: &mut impl BufRead, buf: &mut Vec<u8>) -> std::io::Result<Option<bool>> {
     buf.clear();
     let mut too_long = false;
     let mut any = false;
