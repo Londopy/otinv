@@ -62,7 +62,7 @@ jobs:
       # they are what to read when the test disagrees with real zeek
       - name: Keep zeek's logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: zeek-logs
           path: /tmp/otinv-capture-test/report/zeek-logs
