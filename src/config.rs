@@ -252,6 +252,16 @@ expected_writers = [
 [names]
 # "10.0.1.10" = "Well 2 PLC"
 # "10.0.2.20" = "Control room HMI"
+
+# what CISA's CPG 2.0 asks an OT inventory to hold besides what a capture
+# shows: where each device is, the drawings it's on, where its configuration
+# is backed up, and the software used to program it. These go into
+# inventory.csv every month, so write them once here instead of in the CSV.
+# [details."10.0.1.10"]
+# location = "Well 2 pump house, panel 3"
+# drawings = "P&ID W2-004 rev C"
+# config_backup = "program exported 2026-10-03, office file server"
+# tools = "CLICK Programming Software 3.60"
 "#;
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -265,6 +275,8 @@ pub struct Site {
     pub expected_writers: Vec<String>,
     #[serde(default)]
     pub names: BTreeMap<String, String>,
+    #[serde(default)]
+    pub details: BTreeMap<String, crate::model::Details>,
     #[serde(skip)]
     pub ranges: Vec<Cidr>,
 }
@@ -287,6 +299,11 @@ impl Site {
         for w in &site.expected_writers {
             if crate::net::parse_ip(w).is_none() {
                 bail!("expected_writers: '{w}' is not an IP address");
+            }
+        }
+        for ip in site.details.keys() {
+            if crate::net::parse_ip(ip).is_none() {
+                bail!("details: '{ip}' is not an IP address");
             }
         }
         Ok(site)
@@ -358,5 +375,9 @@ mod tests {
         assert!(Site::parse("local_networks = ['nope']").is_err());
         assert!(Site::parse("expected_writers = ['nope']").is_err());
         assert!(Site::parse("surprise = 1").is_err());
+        let d = Site::parse("[details.'10.0.1.10']\ndrawings = 'P&ID 4'").unwrap();
+        assert_eq!(d.details["10.0.1.10"].drawings, "P&ID 4");
+        assert!(Site::parse("[details.'10.0.1.10']\ndrawing = 'x'").is_err());
+        assert!(Site::parse("[details.well2]\ntools = 'x'").is_err());
     }
 }

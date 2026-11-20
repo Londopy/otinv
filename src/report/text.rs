@@ -178,17 +178,8 @@ pub fn appendix(run: &Run) -> String {
                     "    "
                 )
             );
-            let _ = writeln!(
-                o,
-                "    Evidence ({}{}):",
-                plural(f.evidence_total, "log line", "log lines"),
-                if f.evidence_total > f.evidence.len() {
-                    format!(", first {} shown", f.evidence.len())
-                } else {
-                    String::new()
-                }
-            );
-            for e in &f.evidence {
+            let _ = writeln!(o, "    Evidence ({}):", super::evidence_count(f));
+            for e in f.evidence.iter().take(super::SHOWN_EVIDENCE) {
                 let _ = writeln!(o, "      {}", evidence_line(e));
             }
         }
@@ -231,6 +222,7 @@ pub fn appendix(run: &Run) -> String {
             timefmt::utc(a.first_seen),
             timefmt::utc(a.last_seen)
         ));
+        facts.extend(super::device_facts(run, a));
         for f in facts {
             let _ = writeln!(o, "{}", wrap(&f, W, "    ", "      "));
         }
@@ -330,6 +322,9 @@ pub fn appendix(run: &Run) -> String {
 
 pub fn evidence_line(e: &crate::model::Evidence) -> String {
     let mut s = format!("{}:{}", e.file, e.line);
+    if let Some(n) = e.frame {
+        let _ = write!(s, " frame {n}");
+    }
     if let Some(t) = e.ts {
         let _ = write!(s, " {}", timefmt::utc(t));
     }

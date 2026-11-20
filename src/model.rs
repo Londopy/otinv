@@ -80,6 +80,13 @@ pub struct Evidence {
     pub src: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dst: Option<String>,
+    /// Ports on the src and dst side, when the line is about a connection.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ports: Option<(u16, u16)>,
+    /// The packet's number in the capture, as Wireshark counts (from 1).
+    /// Only known when otinv ran zeek on the capture itself.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub frame: Option<u64>,
     /// What was seen, without addresses: "Modbus WRITE_SINGLE_REGISTER".
     pub what: String,
 }
@@ -114,6 +121,12 @@ pub struct Asset {
     /// Identity read from the traffic: vendor, model, firmware, serial.
     #[serde(default)]
     pub identity: BTreeMap<String, String>,
+    /// What the utility recorded about the device in site.toml.
+    #[serde(default, skip_serializing_if = "Details::is_empty")]
+    pub details: Details,
+    /// Computers seen programming or configuring this device.
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    pub configured_from: BTreeSet<String>,
     /// Protocol labels this host answered.
     #[serde(default)]
     pub serves: BTreeSet<String>,
@@ -145,6 +158,48 @@ impl Asset {
             .filter_map(|k| self.identity.get(*k).map(String::as_str))
             .collect();
         parts.join(" ")
+    }
+}
+
+/// Facts about a device that no capture shows: CPG 2.0 asks for OT
+/// configurations, drawings and tools alongside the inventory.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Details {
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub location: String,
+    /// Drawings or diagrams that show the device: "P&ID W2-004 rev C".
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub drawings: String,
+    /// Where its configuration or program backup is, and how recent.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub config_backup: String,
+    /// Software used to program or configure it.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub tools: String,
+}
+
+impl Details {
+    pub fn is_empty(&self) -> bool {
+        self.fields().iter().all(|(_, v)| v.is_empty())
+    }
+
+    pub fn fields(&self) -> [(&'static str, &String); 4] {
+        [
+            ("Location", &self.location),
+            ("Drawings", &self.drawings),
+            ("Configuration backup", &self.config_backup),
+            ("Tools", &self.tools),
+        ]
+    }
+
+    pub fn fields_mut(&mut self) -> [&mut String; 4] {
+        [
+            &mut self.location,
+            &mut self.drawings,
+            &mut self.config_backup,
+            &mut self.tools,
+        ]
     }
 }
 
@@ -266,6 +321,19 @@ impl Run {
             None if self.externals.iter().any(|e| e.ip == ip) => format!("internet address {ip}"),
             None => ip.to_string(),
         }
+    }
+
+    /// Every evidence line in the run.
+    pub fn evidence_mut(&mut self) -> impl Iterator<Item = &mut Evidence> {
+        let assets = self.assets.iter_mut().flat_map(|a| {
+            let Asset {
+                first_evidence,
+                reasons,
+                ..
+            } = a;
+            std::iter::once(first_evidence).chain(reasons.iter_mut().map(|r| &mut r.evidence))
+        });
+        assets.chain(self.findings.iter_mut().flat_map(|f| f.evidence.iter_mut()))
     }
 
     pub fn count_role(&self, role: Role) -> usize {

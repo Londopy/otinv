@@ -9,6 +9,20 @@ use crate::model::{Evidence, Run};
 use crate::net::{cmp_addr, is_local, parse_ip};
 use std::collections::{BTreeMap, BTreeSet};
 
+/// Identity keys that describe the product, not the site. The rest (device
+/// and plant names, locations, URIs with host names) are free text the
+/// utility typed into the device.
+const SHAREABLE_IDENTITY: &[&str] = &[
+    "vendor",
+    "model",
+    "firmware",
+    "device type",
+    "product code",
+    "software",
+    "BACnet device",
+    "product URI",
+];
+
 #[derive(Debug, Default, Clone)]
 pub struct Map {
     table: BTreeMap<String, String>,
@@ -188,9 +202,20 @@ impl Map {
             if !a.name.is_empty() {
                 a.name = self.get(&a.name);
             }
-            if let Some(s) = a.identity.get_mut("serial") {
-                *s = self.get(s);
+            for (k, v) in &mut a.identity {
+                if k == "serial" {
+                    *v = self.get(v);
+                } else if !SHAREABLE_IDENTITY.contains(&k.as_str()) {
+                    *v = "(withheld)".into();
+                }
             }
+            // free text the utility wrote: names, paths, server names
+            for v in a.details.fields_mut() {
+                if !v.is_empty() {
+                    *v = "(withheld)".into();
+                }
+            }
+            a.configured_from = a.configured_from.iter().map(|ip| self.get(ip)).collect();
             for reason in &mut a.reasons {
                 reason.peer = reason.peer.as_deref().map(|p| self.get(p));
                 self.evidence(&mut reason.evidence);

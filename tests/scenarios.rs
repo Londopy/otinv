@@ -152,7 +152,12 @@ fn every_scripted_bad_scenario_is_flagged_with_evidence() {
 
     for f in &run.findings {
         assert!(!f.evidence.is_empty(), "{} has no evidence", f.key);
-        assert_eq!(f.evidence_total.max(f.evidence.len()), f.evidence_total);
+        assert_eq!(
+            f.evidence.len(),
+            f.evidence_total,
+            "{} lost evidence",
+            f.key
+        );
         for e in &f.evidence {
             assert!(e.line > 0 && e.file.ends_with(".log"), "{e:?}");
         }
@@ -211,6 +216,12 @@ fn every_scripted_bad_scenario_is_flagged_with_evidence() {
         .reasons
         .iter()
         .any(|r| r.what == "sends DNP3 COLD_RESTART"));
+    let restarted = run.asset("10.10.1.20").unwrap();
+    assert!(
+        restarted.configured_from.contains("10.10.2.30"),
+        "{:?}",
+        restarted.configured_from
+    );
 
     // ranked actions put the critical ones first
     let acts = report::actions(&run);
@@ -337,6 +348,89 @@ expected_writers = ["10.10.2.20", "10.10.3.5"]
 }
 
 #[test]
+fn inventory_carries_site_details_and_evidence_csv_has_every_line() {
+    let site = Site::parse(
+        r#"
+[details."10.10.1.10"]
+location = "Well 2 pump house"
+drawings = "P&ID W2-004"
+config_backup = "exported 2026-10-03 to the office file server"
+tools = "CLICK Programming Software 3.60"
+"#,
+    )
+    .unwrap();
+    let base = run_on("lab-baseline", &site, None);
+    let run = run_on("lab-bad", &site, Some(&base));
+    let out = tmp("details");
+    report::write_all(&run, None, &out, false).unwrap();
+
+    let inv = std::fs::read_to_string(out.join("inventory.csv")).unwrap();
+    let header: Vec<&str> = inv.lines().next().unwrap().split(',').collect();
+    let row: Vec<&str> = inv
+        .lines()
+        .find(|l| l.starts_with("10.10.1.10,"))
+        .unwrap()
+        .split(',')
+        .collect();
+    let col = |name: &str| row[header.iter().position(|h| *h == name).unwrap()];
+    assert_eq!(col("location"), "Well 2 pump house");
+    assert_eq!(col("drawings"), "P&ID W2-004");
+    assert_eq!(col("tools"), "CLICK Programming Software 3.60");
+
+    let ev = std::fs::read_to_string(out.join("evidence.csv")).unwrap();
+    let total: usize = run.findings.iter().map(|f| f.evidence_total).sum();
+    assert_eq!(ev.lines().count(), total + 1);
+    // log input has no frame numbers, so each line gets the conversation
+    let write = ev
+        .lines()
+        .find(|l| l.contains("WRITE_SINGLE_COIL"))
+        .unwrap();
+    assert!(
+        write.contains("ip.addr == 10.10.3.5 && ip.addr == 10.10.1.10"),
+        "{write}"
+    );
+    assert!(write.contains("tcp.port == 502"), "{write}");
+
+    // what the utility wrote is withheld from a shared copy, and so is text
+    // it typed into a device; what the product is stays
+    let mut run = run;
+    let plc = run
+        .assets
+        .iter_mut()
+        .find(|a| a.ip == "10.10.1.10")
+        .unwrap();
+    plc.identity
+        .insert("location".into(), "Pump house east".into());
+    plc.identity
+        .insert("device name".into(), "WELL2-PLC".into());
+    plc.identity
+        .insert("model".into(), "CLICK C0-12DD1E-D".into());
+    let map = pseudo::Map::build(&[&run]);
+    let shared = map.apply(&run);
+    let p = shared
+        .assets
+        .iter()
+        .find(|a| a.identity.contains_key("location"))
+        .unwrap();
+    assert_eq!(p.identity["location"], "(withheld)");
+    assert_eq!(p.identity["model"], "CLICK C0-12DD1E-D");
+    let share = tmp("details-share");
+    report::write_all(&shared, None, &share, true).unwrap();
+    let text = all_text(&share);
+    for real in [
+        "pump house",
+        "Pump house east",
+        "WELL2-PLC",
+        "W2-004",
+        "file server",
+        "CLICK Programming",
+    ] {
+        assert!(!text.contains(real), "{real} leaked");
+    }
+    assert!(text.contains("(withheld)"));
+}
+
+#[test]
 fn reports_render_for_an_empty_capture() {
     let dir = tmp("empty");
     std::fs::write(
@@ -410,6 +504,7 @@ fn cli_share_folder_is_clean_and_reruns_clear_stale_files() {
             "comms.mmd",
             "diff.html",
             "diff.txt",
+            "evidence.csv",
             "inventory.csv",
             "summary.txt"
         ]

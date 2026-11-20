@@ -174,6 +174,16 @@ fn record(doc: &Value, dataset: &str, line: usize) -> Record {
             pairs.push((zeek, v));
         }
     }
+    // Malcolm 26.10 keeps these logs' own field names under zeek.<log>
+    let identity = crate::zeek::IDENTITY_LOGS
+        .iter()
+        .find(|(n, _)| *n == dataset)
+        .map_or(&[][..], |(_, f)| *f);
+    for f in identity {
+        if let Some(v) = field(doc, &format!("zeek.{dataset}.{f}")).and_then(as_text) {
+            pairs.push((f, v));
+        }
+    }
     let borrowed: Vec<(&str, &str)> = pairs.iter().map(|(k, v)| (*k, v.as_str())).collect();
     Record::from_pairs(line, &borrowed)
 }
@@ -206,6 +216,9 @@ impl Sink {
         };
         let Some(ds) = dataset(&doc) else { return };
         let rec = record(&doc, &ds, number);
+        if !crate::zeek::wanted(&ds, &rec) {
+            return;
+        }
         // keyed by log type first, so pages of one export read in log order
         let log = self
             .logs
@@ -476,6 +489,27 @@ mod tests {
         let r = record(&dhcp, "dhcp", 1);
         assert_eq!(r.get("assigned_addr"), Some("10.0.0.5"));
         assert_eq!(r.get("client_fqdn"), Some("pc.lab"));
+    }
+
+    #[test]
+    fn identity_logs_keep_their_field_names() {
+        let ack = json!({"event": {"provider": "zeek", "dataset": "bacnet_property"},
+            "network": {"is_orig": false},
+            "source": {"ip": "10.0.0.20", "port": 47808},
+            "destination": {"ip": "10.0.0.7", "port": 47808},
+            "zeek": {"bacnet_property": {"pdu_service": "read-property-ack",
+                "object_type": "device", "property": "model-name", "value": "HIY-054"}}});
+        assert_eq!(dataset(&ack).as_deref(), Some("bacnet_property"));
+        let r = record(&ack, "bacnet_property", 1);
+        assert_eq!(r.get("property"), Some("model-name"));
+        assert_eq!(r.get("value"), Some("HIY-054"));
+        assert_eq!(r.get("source_h"), Some("10.0.0.20"));
+        let s7 = json!({"event": {"provider": "zeek", "dataset": "s7comm_known_devices"},
+            "zeek": {"s7comm_known_devices": {"module_name": "CPU 1214C", "module_serial": "S C-X"}}});
+        assert_eq!(
+            record(&s7, "s7comm_known_devices", 1).get("module_name"),
+            Some("CPU 1214C")
+        );
     }
 
     #[test]

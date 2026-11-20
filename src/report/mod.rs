@@ -24,6 +24,8 @@ This folder describes a utility's control network: its devices, how they
 talk, and its weak spots. Treat it like the keys to the plant.
 
 - Keep it on an encrypted disk, and delete it when you no longer need it.
+  How: \"Keeping the data safe\" in docs/volunteer-guide.md at
+  https://github.com/Londopy/otinv
 - Don't post it, attach it to a ticket, or email it unencrypted.
 - To share for review, re-run otinv with --pseudonymize and share only the
   share/ folder it writes. Nothing else in this folder is safe to share:
@@ -33,6 +35,8 @@ Files
   summary.txt          one page: what's on the network, what to fix first
   appendix.html / .txt every finding with the log lines behind it
   inventory.csv        the asset inventory, one row per device
+  evidence.csv         the log lines (and packets, from a capture) behind
+                       every finding
   comms.csv            who talks to whom, over what, how often
   comms.dot / .mmd     the same map for Graphviz / Mermaid
   diff.txt / .html     what changed since the previous run (with --previous)
@@ -47,8 +51,10 @@ pub const README_SHARED: &str = "\
 PSEUDONYMIZED OTINV REPORT
 
 Addresses, MAC addresses, host names, device names and serial numbers in
-these files are replaced with aliases (host-01, ext-01, mac-01, ...). Device
-makes, models, firmware and roles are kept, because a reviewer needs them.
+these files are replaced with aliases (host-01, ext-01, mac-01, ...). Names,
+locations and other text a utility types into its devices, and everything
+from the site file's [details], are withheld. Device makes, models,
+firmware and roles are kept, because a reviewer needs them.
 
 Before finishing, otinv checked every file in this folder for IP and MAC
 addresses and found none.
@@ -66,6 +72,7 @@ pub const OUTPUT_FILES: &[&str] = &[
     "appendix.txt",
     "appendix.html",
     "inventory.csv",
+    "evidence.csv",
     "comms.csv",
     "comms.dot",
     "comms.mmd",
@@ -73,6 +80,39 @@ pub const OUTPUT_FILES: &[&str] = &[
     "diff.html",
     "pseudonym-map.csv",
 ];
+
+/// Evidence lines shown per finding in the appendix; evidence.csv has all.
+pub const SHOWN_EVIDENCE: usize = 25;
+
+/// "12 log lines", or "first 25 of 300 log lines, all in evidence.csv".
+pub fn evidence_count(f: &Finding) -> String {
+    let total = f.evidence_total;
+    if total <= SHOWN_EVIDENCE {
+        return plural(total, "log line", "log lines");
+    }
+    let rest = if f.evidence.len() < total {
+        format!("the first {} in evidence.csv", f.evidence.len())
+    } else {
+        "all in evidence.csv".to_string()
+    };
+    format!("first {SHOWN_EVIDENCE} of {total} log lines, {rest}")
+}
+
+/// What the utility recorded about a device, then who configures it.
+pub fn device_facts(run: &Run, a: &crate::model::Asset) -> Vec<String> {
+    let mut v: Vec<String> = a
+        .details
+        .fields()
+        .iter()
+        .filter(|(_, val)| !val.is_empty())
+        .map(|(k, val)| format!("{k}: {val}"))
+        .collect();
+    if !a.configured_from.is_empty() {
+        let from: Vec<String> = a.configured_from.iter().map(|ip| who(run, ip)).collect();
+        v.push(format!("Configured from {}", english_list(&from, 4)));
+    }
+    v
+}
 
 /// "Controller (PLC/RTU) 10.0.1.10" or "internet address 203.0.113.5".
 pub fn who(run: &Run, ip: &str) -> String {
@@ -271,6 +311,7 @@ pub fn write_all(
     put("appendix.txt", text::appendix(run))?;
     put("appendix.html", html::appendix(run))?;
     put("inventory.csv", csv::inventory(run))?;
+    put("evidence.csv", csv::evidence(run))?;
     put("comms.csv", csv::comms(run))?;
     put("comms.dot", map::dot(run))?;
     put("comms.mmd", map::mermaid(run))?;

@@ -10,9 +10,6 @@ use crate::zeek::Log;
 use std::collections::{BTreeMap, BTreeSet};
 use std::net::IpAddr;
 
-/// Evidence lines kept per finding; the total is still counted.
-pub const MAX_EVIDENCE: usize = 25;
-
 /// Which way the traffic went, seen from the finding's host.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Dir {
@@ -21,6 +18,11 @@ enum Dir {
     /// The host reached the peer.
     Out,
 }
+
+/// Evidence lines kept per finding. Far more than anyone reads, and it keeps
+/// a month of a misconfigured poller from filling memory; the total is
+/// still counted.
+pub const MAX_EVIDENCE: usize = 10_000;
 
 struct Acc {
     severity: Severity,
