@@ -253,12 +253,24 @@ fn credentials_never_reach_any_output() {
 
 #[test]
 fn run_files_roundtrip_and_analysis_is_deterministic() {
-    let a = baseline();
-    let b = baseline();
+    let base = baseline();
+    let (a, b) = (bad(&base), bad(&base));
     assert_eq!(
         serde_json::to_string(&a).unwrap(),
         serde_json::to_string(&b).unwrap()
     );
+    // and the rendered reports are byte for byte the same
+    let (da, db) = (tmp("det-a"), tmp("det-b"));
+    let files = report::write_all(&a, None, &da, false).unwrap();
+    report::write_all(&b, None, &db, false).unwrap();
+    for f in files {
+        let name = f.file_name().unwrap();
+        assert_eq!(
+            std::fs::read(&f).unwrap(),
+            std::fs::read(db.join(name)).unwrap(),
+            "{name:?} differs between runs"
+        );
+    }
 
     let out = tmp("roundtrip");
     let p = out.join("run.londopy");
