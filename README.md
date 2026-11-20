@@ -29,9 +29,10 @@ WHAT TO FIX FIRST
 
 ## Features
 
-- **Asset inventory** (`inventory.csv`): IP, MAC, vendor, role, make/model, firmware and serial when the device announces them, protocols, first and last seen. One row per device.
+- **Asset inventory** (`inventory.csv`): IP, MAC, vendor, role, make/model, firmware and serial when the device announces them, protocols, first and last seen, and the computers seen configuring it. One row per device. Location, drawings, configuration backups and tools, which CISA's CPG 2.0 asks for and no capture shows, come from the site file.
+- **Device identity** from the traffic: EtherNet/IP List Identity, Modbus Device Identification, BACnet I-Am and device properties, S7comm component identification, OPC UA server descriptions, Omron FINS controller data, ROC Plus system configuration and C37.118 configuration frames.
 - **Role inference**: controllers (PLC/RTU), operator screens (HMI/SCADA), engineering workstations, network services and IT hosts. Each role comes with the log line that justifies it.
-- **Plain-English findings**, each listing the exact Zeek log lines behind it:
+- **Plain-English findings**, each listing the exact Zeek log lines behind it, and the packet numbers when otinv ran Zeek on the capture:
   - industrial protocols to or from the internet
   - remote-access services (VNC, RDP, TeamViewer, telnet...) on control-system computers or reachable from the internet, and remote-control tools dialing out from them
   - logins sent as readable text (telnet, FTP, plain web logins). otinv flags them but throws the user names and passwords away while reading the logs.
@@ -40,6 +41,7 @@ WHAT TO FIX FIRST
   - new devices since the last run
 - **One-page summary** (`summary.txt`): the top five fixes, ranked, in words a two-person utility can act on.
 - **Appendix** (`appendix.html`, `appendix.txt`): every finding with evidence, the full inventory, and a communication map drawn in the page. No scripts, fonts or network needed.
+- **Evidence list** (`evidence.csv`): every log line behind every finding (up to 10,000 per finding; the total is always counted), with its packet number and a Wireshark filter that finds it.
 - **Communication map** as Graphviz (`comms.dot`), Mermaid (`comms.mmd`) and CSV (`comms.csv`).
 - **Diff mode**: "since last month". New, missing and changed devices (MAC swaps, firmware changes), plus new and resolved problems.
 - **Pseudonymized copy** for sharing with a reviewer, in its own `share/` folder: addresses, MACs, names and serials become `host-01`, `ext-01`, ... Before it finishes, otinv scans every shared file for IP and MAC addresses. If it finds one, it deletes the share folder and stops.
@@ -104,11 +106,12 @@ has read them, because they can hold user names, passwords and URLs that
 otinv's reports leave out. `--keep-logs` keeps them in `<out>/zeek-logs`
 instead.
 
-The **Capture** workflow (`.github/workflows/capture.yml`) builds the
-Docker image and generates a lab capture with
-`tests/fixtures/make_lab_pcap.py`. It runs otinv on that capture through
-real Zeek and ICSNPP, and checks every expected finding. The native and WSL
-runners use the same Zeek command, but no test runs them.
+The **Capture** workflow (`.github/workflows/capture.yml`) runs otinv
+through real Zeek all three ways: the Docker image with ICSNPP, Zeek from
+the project's Ubuntu packages on PATH, and the same Zeek inside WSL on a
+Windows runner. Each run analyzes a lab capture written by
+`tests/fixtures/make_lab_pcap.py` and checks every expected finding. The
+Docker run also checks 15 public ICS captures (see [Testing](#testing)).
 
 ## Usage
 
@@ -147,7 +150,16 @@ short: only `share/`, and never `run.londopy` or `pseudonym-map.csv`.
 Logs can be Zeek's default tab-separated format or JSON. otinv reads only
 `conn.log` (required), `modbus.log`, `dnp3.log`, `ftp.log`, `http.log`,
 `dhcp.log`, and the ICSNPP identity logs (`cip_identity.log`,
-`modbus_read_device_identification.log`). It keeps only the fields it uses
+`modbus_read_device_identification.log`, `bacnet_discovery.log`,
+`bacnet_property.log`, `s7comm_known_devices.log`,
+`opcua_binary_get_endpoints_description.log`,
+`opcua_binary_create_session_endpoints.log`, `omron_fins_detail.log`,
+`roc_plus_sys_cfg.log`, `synchrophasor_cfg_detail.log`). ICSNPP's HART-IP,
+C12.22, PROFINET, EtherCAT and GE-SRTP logs aren't read for identity:
+HART-IP identifies instruments behind a gateway that have no address of
+their own, and the others don't decode identity into fields. For the same
+reason, a BACnet router that answers for several devices behind it gets
+only its own device's identity, never theirs. It keeps only the fields it uses
 and drops everything else as it reads, including URLs, cookies, SNMP
 communities and FTP reply text. User names and passwords leave only a "a
 login happened" marker. Other logs in the folder aren't read. A file not named after its type, like `2026-11-01-conn.log`, is recognized from the `#path` or `_path` in its first lines.
@@ -173,7 +185,11 @@ curl -sk -u <user> https://<malcolm>/mapi/document \
        "sort": ["firstPacket:asc", "event.id:asc"],
        "filter": {"event.provider": "zeek",
                   "event.dataset": ["conn", "modbus", "dnp3", "ftp", "http", "dhcp",
-                                    "cip_identity", "modbus_read_device_identification"]}}' \
+                                    "cip_identity", "modbus_read_device_identification",
+                                    "bacnet_discovery", "bacnet_property", "s7comm_known_devices",
+                                    "opcua_binary_get_endpoints_description",
+                                    "opcua_binary_create_session_endpoints", "omron_fins_detail",
+                                    "roc_plus_sys_cfg", "synchrophasor_cfg_detail"]}}' \
   > malcolm-export/page1.json
 ```
 
@@ -196,7 +212,8 @@ are read; Arkime sessions and Suricata alerts are skipped. Malcolm also files
 the login of a web form under the same field as a basic-auth login, so from
 an export both show as readable logins. The mapping follows Malcolm 26.10's
 Logstash pipeline. It's tested against an export built to that mapping, not
-yet against a live Malcolm.
+yet against a live Malcolm. Evidence from an export has no packet numbers,
+because otinv never sees the capture.
 
 The export holds everything Malcolm indexed, including captured passwords
 and full URLs, which otinv drops as it reads. Treat it like the raw logs:
@@ -218,6 +235,13 @@ expected_writers = ["10.0.2.20"]        # the SCADA server
 [names]
 "10.0.1.10" = "Well 2 PLC"
 "10.0.2.20" = "Control room HMI"
+
+# what no capture shows; goes into inventory.csv every month
+[details."10.0.1.10"]
+location = "Well 2 pump house, panel 3"
+drawings = "P&ID W2-004 rev C"
+config_backup = "program exported 2026-10-03, office file server"
+tools = "CLICK Programming Software 3.60"
 ```
 
 `--oui oui.csv` adds the full IEEE vendor list (download it once from
@@ -240,20 +264,33 @@ finding names the CPG 2.0 goals it relates to.
 | `role`, `ot_or_it` | Inferred role; OT for controllers, HMIs and engineering workstations |
 | `mac_address`, `mac_vendor` | MAC from the wire or DHCP, and its maker. Left empty when the MAC belongs to a router |
 | `hostname` | From DHCP |
-| `make_model`, `firmware_revision`, `serial_number`, `device_type` | What the device announced about itself (EtherNet/IP List Identity, Modbus Device Identification) |
+| `make_model`, `firmware_revision`, `serial_number`, `device_type` | What the device announced about itself (see Device identity above). Other announced facts, like a BACnet device's location or an OPC UA server's product URI, are in the appendix |
 | `protocols_served`, `protocols_used` | Protocols it answered, and protocols it started |
 | `talks_with` | Number of distinct devices it exchanged traffic with |
 | `first_seen_utc`, `last_seen_utc` | Within the capture |
 | `open_findings` | Rule ids of findings about this device |
 | `role_basis` | Why it got its role |
+| `location`, `drawings`, `config_backup`, `tools` | From `[details]` in site.toml: where it is, the drawings it's on, where its configuration is backed up, and the software that programs it. CPG 2.0 asks for these for OT assets |
+| `configured_from` | Computers seen sending it programming functions (Modbus or DNP3 engineering functions, engineering protocols) or opening management sessions to it (web, SSH, telnet, FTP) |
 
 ## What it will not do
 
 - **Scan anything, ever.** It reads logs of traffic that already happened.
 - Be an IDS or a sensor. Malcolm, Zeek and Dragos already do that well.
-- Upload anything. There's no telemetry, and no network access except `otinv update`, which only runs when you type it and only talks to GitHub.
+- Upload anything. There's no telemetry. See [Network use](#network-use) for the one exception.
 - Touch or fix devices. It tells a person what to do.
 - See devices that stayed silent during the capture, or traffic that never crossed the mirror port.
+
+## Network use
+
+The analysis never touches a network: `otinv analyze` and `otinv diff` read
+files and write files, and the Docker runner starts Zeek with
+`--network none`. The one command that goes online is `otinv update`, and
+only when you type it. It asks GitHub's API for the latest release, and if
+you say yes, downloads that release's exe and `SHA256SUMS.txt` from GitHub.
+It sends nothing about you or your data, and `otinv update --check` only
+asks. On a laptop that must stay offline, don't run it; download new
+releases on another machine instead.
 
 ## How is this different from...?
 
@@ -293,8 +330,50 @@ cargo build --release
 cargo test --all
 ```
 
-The test fixtures are synthetic Zeek logs of a small lab network, a clean
-hour and a bad one, written by `tests/fixtures/make_fixtures.py`.
+## Testing
+
+`cargo test` runs everything that needs no Zeek. The test fixtures are
+synthetic Zeek logs of a small lab network, a clean hour and a bad one,
+written by `tests/fixtures/make_fixtures.py`.
+
+Two tests need Zeek and show as ignored in a plain `cargo test`:
+
+- `tests/capture.rs` writes the lab's bad hour as packets and runs it
+  through Zeek. `OTINV_CAPTURE_RUNNER` picks the runner (`docker`, the
+  default, `native` or `wsl`).
+- `tests/public_traces.rs` runs otinv on public ICS captures listed with
+  their hashes in `tests/public-traces.txt`: CISA's ICSNPP test captures
+  (BSD-3-Clause) and Zeek's own Modbus and DNP3 test captures, fetched at
+  pinned commits. They cover BACnet, S7comm, OPC UA, Omron FINS, ROC Plus,
+  C37.118, HART-IP, C12.22, EtherNet/IP, Modbus and DNP3, in pcap and
+  pcapng.
+
+```sh
+docker build -t otinv-zeek:local docker/zeek-icsnpp
+cargo test --test capture -- --ignored
+python scripts/fetch_public_traces.py target/public-traces
+OTINV_PUBLIC_TRACES=target/public-traces cargo test --test public_traces -- --ignored
+```
+
+## What hasn't been tested yet
+
+Everything above runs on synthetic captures and public test captures. Still
+to do, and none of it can be done from code:
+
+- a capture off a mirror port on real PLCs (the planned OpenPLC and
+  AutomationDirect CLICK lab)
+- an export from a live Malcolm
+- a study of whether operators can act on the one-page report, which needs
+  IRB approval
+- feedback from inspectors and insurers on which inventory columns they want
+- a pilot at a utility, only through a partner program and with written
+  authorization
+
+## Docs
+
+- [docs/volunteer-guide.md](docs/volunteer-guide.md): running otinv at a
+  utility, from the authorization letter to keeping the data safe
+- [docs/paper-draft.md](docs/paper-draft.md): the research write-up
 
 ## Layout
 
@@ -310,14 +389,17 @@ src/
   pseudo.rs      aliases for sharing
   report/        summary and appendix (text, HTML), CSV, map (DOT, Mermaid, SVG)
   runner.rs      running zeek: native, WSL or Docker
+  pcap.rs        packet numbers for evidence, read from the capture
   londopy.rs     .londopy files
   update.rs      otinv update: GitHub Releases check, SHA-256, exe swap
 rules/default.toml   the built-in rules
 installer/           Inno Setup and WiX sources, install.ps1 and install.cmd
 scripts/release_notes.py   the release page, checksums and torrents
+scripts/fetch_public_traces.py   downloads the public test captures
+docs/                volunteer guide and paper draft
 docker/zeek-icsnpp/  Zeek + ICSNPP image for the docker runner
-tests/               scenario, edge-case and capture tests; lab fixtures and
-                     the generators for its logs and its capture
+tests/               scenario, edge-case, capture and public-capture tests;
+                     lab fixtures and the generators for its logs and capture
 ```
 
 ## Contributing
