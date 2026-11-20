@@ -3,8 +3,8 @@ name: Capture
 # end to end through a real zeek, every way otinv can run it:
 #   docker  the zeek + ICSNPP image: the lab capture (tests/capture.rs) and
 #           the public ICS captures (tests/public_traces.rs)
-#   native  zeek from the project's Ubuntu packages, on PATH
-#   wsl     the same zeek inside WSL, driven from Windows
+#   native  zeek from the project's Ubuntu packages, on PATH, with ICSNPP
+#   wsl     the same zeek and ICSNPP inside WSL, driven from Windows
 # separate from ci.yml because building the image takes several minutes; the
 # cache makes later runs fast.
 on:
@@ -83,7 +83,7 @@ jobs:
   native:
     name: Native zeek (Linux)
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
 
@@ -94,8 +94,15 @@ jobs:
           curl -fsSL --max-time 60 https://download.opensuse.org/repositories/security:zeek/xUbuntu_24.04/Release.key \
             | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/security_zeek.gpg > /dev/null
           sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends zeek
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends zeek cmake make g++ git
           echo /opt/zeek/bin >> "$GITHUB_PATH"
+
+      # the parsers whose identity and EtherNet/IP logs the test checks;
+      # their own test suites already run in the Docker image build
+      - name: Install ICSNPP
+        run: |
+          sudo env PATH="/opt/zeek/bin:$PATH" zkg autoconfig --force
+          sudo env PATH="/opt/zeek/bin:$PATH" zkg install --force --skiptests icsnpp-modbus icsnpp-dnp3 icsnpp-enip
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -104,6 +111,7 @@ jobs:
       - name: Run the capture test
         env:
           OTINV_CAPTURE_RUNNER: native
+          OTINV_CAPTURE_ICSNPP: "1"
         run: |
           zeek --version
           cargo test --test capture -- --ignored --nocapture
@@ -111,7 +119,7 @@ jobs:
   wsl:
     name: Zeek in WSL (Windows)
     runs-on: windows-latest
-    timeout-minutes: 45
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v7
 
@@ -130,9 +138,12 @@ jobs:
           curl -fsSL --max-time 60 https://download.opensuse.org/repositories/security:zeek/xUbuntu_24.04/Release.key \
             | gpg --dearmor > /etc/apt/trusted.gpg.d/security_zeek.gpg
           apt-get update
-          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends zeek
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends zeek cmake make g++ git
           # `wsl -e zeek` runs without a login shell, so zeek has to be on the default PATH
           ln -sf /opt/zeek/bin/zeek /usr/local/bin/zeek
+          export PATH="/opt/zeek/bin:$PATH"
+          zkg autoconfig --force
+          zkg install --force --skiptests icsnpp-modbus icsnpp-dnp3 icsnpp-enip
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -141,6 +152,7 @@ jobs:
       - name: Run the capture test
         env:
           OTINV_CAPTURE_RUNNER: wsl
+          OTINV_CAPTURE_ICSNPP: "1"
         run: |
           wsl -e zeek --version
           cargo test --test capture -- --ignored --nocapture

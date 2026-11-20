@@ -6,9 +6,11 @@
 // workflow runs it with `cargo test --test capture -- --ignored` three ways,
 // picked by OTINV_CAPTURE_RUNNER:
 //   docker  the otinv-zeek:local image, zeek + ICSNPP (the default)
-//   native  zeek on PATH, without ICSNPP
-//   wsl     zeek inside WSL on Windows, without ICSNPP
-// without ICSNPP there are no identity logs, so those checks only run on docker.
+//   native  zeek on PATH
+//   wsl     zeek inside WSL on Windows
+// the docker image always has ICSNPP; for native and wsl, OTINV_CAPTURE_ICSNPP=1
+// says it's installed there too (CI installs it). without it there are no
+// identity logs, so those checks are skipped.
 
 use otinv::model::{Role, Run};
 use otinv::pipeline;
@@ -50,7 +52,7 @@ fn packet(pcap: &[u8], n: u64) -> &[u8] {
 #[ignore = "needs zeek; the capture workflow runs it"]
 fn capture_through_real_zeek() {
     let runner = std::env::var("OTINV_CAPTURE_RUNNER").unwrap_or_else(|_| "docker".into());
-    let icsnpp = runner == "docker";
+    let icsnpp = runner == "docker" || std::env::var("OTINV_CAPTURE_ICSNPP").as_deref() == Ok("1");
     let work = std::env::temp_dir().join("otinv-capture-test");
     let _ = std::fs::remove_dir_all(&work);
     std::fs::create_dir_all(&work).unwrap();
@@ -84,6 +86,10 @@ fn capture_through_real_zeek() {
             stderr.contains("--network none"),
             "docker must run without a network"
         );
+    }
+    // otinv noticed the zkg packages and loaded them
+    if icsnpp {
+        assert!(!stderr.contains("no zkg packages"), "packages not detected");
     }
 
     let logs: BTreeSet<String> = std::fs::read_dir(out.join("zeek-logs"))
