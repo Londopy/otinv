@@ -18,9 +18,10 @@ RUN apt-get update \
 RUN zkg autoconfig --force \
  && zkg install --force icsnpp-modbus icsnpp-dnp3 icsnpp-enip
 
-# the rest add protocol coverage (conn.log service names) but otinv doesn't
-# read their logs. their own test suites are skipped: some fail against
-# zeek 9 (icsnpp-hart-ip did, 2026-11) without affecting the parsing otinv
+# the rest add protocol coverage (conn.log service names), and otinv reads
+# device identity from some of their logs (BACnet, S7comm, OPC UA, FINS, ROC
+# Plus, C37.118; tests/public_traces.rs checks each against real captures).
+# their own test suites are skipped: some fail against zeek 9 (icsnpp-hart-ip did, 2026-11) without affecting the parsing otinv
 # relies on, and one failing self-test shouldn't block the whole image.
 RUN zkg install --force --skiptests \
       icsnpp-bacnet icsnpp-bsap icsnpp-ethercat icsnpp-genisys icsnpp-hart-ip \
