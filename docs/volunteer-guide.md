@@ -67,10 +67,11 @@ otinv analyze plant-week.pcapng -o otinv-2026-11 --pseudonymize
 ```
 
 Then open `otinv-2026-11/summary.txt`. That page is what the operator reads.
-`appendix.html` has every finding, the log lines and packet numbers behind
-it, and the network map. `evidence.csv` lists the log lines and packets
-behind every finding, with a Wireshark filter for each, if you want to check
-one in the capture: paste the filter into Wireshark's display filter bar.
+`appendix.html` has every finding, the log lines behind it (with packet
+numbers for lines about a connection), and the network map.
+`evidence.csv` lists the log lines behind every finding, with a Wireshark
+filter for each line about a connection, if you want to check one in the
+capture: paste the filter into Wireshark's display filter bar.
 
 Expect the first run to flag things that are fine, like the SCADA server's
 own vendor connection. That's what the site file is for.

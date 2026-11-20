@@ -318,10 +318,10 @@ fn value<'r>(rec: &'r Record, names: &[&str]) -> Option<&'r str> {
         .filter(|v| !matches!(*v, "" | "-" | "(empty)"))
 }
 
-/// What an identity log line says, and which device it describes. Zeek's
-/// HART-IP, C12.22, PROFINET, EtherCAT and GE-SRTP logs aren't read: their
-/// identity either belongs to an instrument behind a gateway, with no address
-/// of its own, or isn't decoded into fields.
+/// What an identity log line says, and which device it describes. ICSNPP's
+/// other logs aren't read (the README says why for each): BSAP and Genisys
+/// carry no identity, and the rest either describe something with no IP
+/// address of its own or leave the identity undecoded.
 fn identity(
     log: &str,
     rec: &Record,

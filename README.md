@@ -32,7 +32,7 @@ WHAT TO FIX FIRST
 - **Asset inventory** (`inventory.csv`): IP, MAC, vendor, role, make/model, firmware and serial when the device announces them, protocols, first and last seen, and the computers seen configuring it. One row per device. Location, drawings, configuration backups and tools, which CISA's CPG 2.0 asks for and no capture shows, come from the site file.
 - **Device identity** from the traffic: EtherNet/IP List Identity, Modbus Device Identification, BACnet I-Am and device properties, S7comm component identification, OPC UA server descriptions, Omron FINS controller data, ROC Plus system configuration and C37.118 configuration frames.
 - **Role inference**: controllers (PLC/RTU), operator screens (HMI/SCADA), engineering workstations, network services and IT hosts. Each role comes with the log line that justifies it.
-- **Plain-English findings**, each listing the exact Zeek log lines behind it, and the packet numbers when otinv ran Zeek on the capture:
+- **Plain-English findings**, each listing the exact Zeek log lines behind it. When otinv ran Zeek on the capture itself, each line about a TCP or UDP connection also names its packet: a `conn.log` line the connection's first packet, a protocol log line (Modbus, DNP3, HTTP...) the packet carrying that message. Findings from a log folder or a Malcolm export cite log lines only:
   - industrial protocols to or from the internet
   - remote-access services (VNC, RDP, TeamViewer, telnet...) on control-system computers or reachable from the internet, and remote-control tools dialing out from them
   - logins sent as readable text (telnet, FTP, plain web logins). otinv flags them but throws the user names and passwords away while reading the logs.
@@ -41,7 +41,7 @@ WHAT TO FIX FIRST
   - new devices since the last run
 - **One-page summary** (`summary.txt`): the top five fixes, ranked, in words a two-person utility can act on.
 - **Appendix** (`appendix.html`, `appendix.txt`): every finding with evidence, the full inventory, and a communication map drawn in the page. No scripts, fonts or network needed.
-- **Evidence list** (`evidence.csv`): every log line behind every finding (up to 10,000 per finding; the total is always counted), with its packet number and a Wireshark filter that finds it.
+- **Evidence list** (`evidence.csv`): the log lines behind every finding (up to 10,000 per finding; the total is always counted). Lines about a TCP or UDP connection also get a Wireshark filter: the packet's frame number when otinv ran Zeek on the capture, otherwise the conversation's addresses and ports.
 - **Communication map** as Graphviz (`comms.dot`), Mermaid (`comms.mmd`) and CSV (`comms.csv`).
 - **Diff mode**: "since last month". New, missing and changed devices (MAC swaps, firmware changes), plus new and resolved problems.
 - **Pseudonymized copy** for sharing with a reviewer, in its own `share/` folder: addresses, MACs, names and serials become `host-01`, `ext-01`, ... Before it finishes, otinv scans every shared file for IP and MAC addresses. If it finds one, it deletes the share folder and stops.
@@ -90,7 +90,7 @@ packages, which it finds on its own:
 
 | Where | Setup |
 |---|---|
-| Linux | Install [Zeek](https://zeek.org), then `zkg install icsnpp-modbus icsnpp-dnp3 icsnpp-enip ...` |
+| Linux | Install [Zeek](https://zeek.org), then `zkg install icsnpp-modbus icsnpp-dnp3 icsnpp-enip ...` (with `sudo` for a packaged Zeek in `/opt/zeek`) |
 | Windows | The same inside WSL (`wsl -e zeek --version` should work) |
 | Either | `docker build -t otinv-zeek:local docker/zeek-icsnpp` (Zeek 9.0.1 and CISA's ICSNPP parsers; the Capture workflow builds this exact image and checks otinv against it) |
 
@@ -154,13 +154,22 @@ Logs can be Zeek's default tab-separated format or JSON. otinv reads only
 `bacnet_property.log`, `s7comm_known_devices.log`,
 `opcua_binary_get_endpoints_description.log`,
 `opcua_binary_create_session_endpoints.log`, `omron_fins_detail.log`,
-`roc_plus_sys_cfg.log`, `synchrophasor_cfg_detail.log`). ICSNPP's HART-IP,
-C12.22, PROFINET, EtherCAT and GE-SRTP logs aren't read for identity:
-HART-IP identifies instruments behind a gateway that have no address of
-their own, and the others don't decode identity into fields. For the same
-reason, a BACnet router that answers for several devices behind it gets
-only its own device's identity, never theirs. It keeps only the fields it uses
-and drops everything else as it reads, including URLs, cookies, SNMP
+`roc_plus_sys_cfg.log`, `synchrophasor_cfg_detail.log`). ICSNPP's other
+parsers are left out of identity on purpose:
+
+- BSAP and Genisys logs carry no identity at all.
+- GE-SRTP logs only the header of the controller's ID reply, and PROFINET
+  IO CM only an RPC object UUID.
+- EtherCAT identifies slave chips on a bus with no IP address.
+- HART-IP identifies field instruments behind a gateway, which have no
+  address of their own.
+- C12.22's identification-service log is off by default in ICSNPP, and
+  holds the meter's identity only as raw bytes.
+
+For the same reason as HART-IP, a BACnet router that answers for several
+devices behind it gets only its own device's identity, never theirs.
+
+otinv keeps only the fields it uses and drops everything else as it reads, including URLs, cookies, SNMP
 communities and FTP reply text. User names and passwords leave only a "a
 login happened" marker. Other logs in the folder aren't read. A file not named after its type, like `2026-11-01-conn.log`, is recognized from the `#path` or `_path` in its first lines.
 Compressed logs are skipped with a warning, and lines cut off mid-write (or
@@ -244,9 +253,12 @@ config_backup = "program exported 2026-10-03, office file server"
 tools = "CLICK Programming Software 3.60"
 ```
 
-`--oui oui.csv` adds the full IEEE vendor list (download it once from
-https://standards-oui.ieee.org/oui/oui.csv). Without it, otinv uses a small
-built-in list of vendors common on control networks.
+MAC vendors come from IEEE's whole registry (the MA-L, MA-M, MA-S and IAB
+assignments), built into otinv, so lookups work offline. A few vendors
+common on control networks get shorter names. The built-in copy is as of
+the release; `--oui oui.csv` reads a newer IEEE file
+(https://standards-oui.ieee.org/oui/oui.csv, or `mam.csv`/`oui36.csv`) on
+top of it.
 
 ### Inventory columns
 
@@ -292,16 +304,29 @@ It sends nothing about you or your data, and `otinv update --check` only
 asks. On a laptop that must stay offline, don't run it; download new
 releases on another machine instead.
 
+## Encryption
+
+otinv doesn't encrypt its output, on purpose. By the time it runs, the
+capture is already on the same disk unencrypted, and the reports are only as
+safe as the capture next to them. Full-disk encryption (BitLocker, LUKS) or
+an encrypted container protects all of it at once, and a utility can't be
+locked out of its own inventory by a password only otinv knew. The
+[volunteer guide](docs/volunteer-guide.md#keeping-the-data-safe) says how to
+set it up. What otinv does itself: Zeek's raw logs go to a private temporary
+folder and are deleted once read, every report folder carries
+`README-SENSITIVE.txt`, and only the pseudonymized `share/` copy is meant to
+leave the laptop.
+
 ## How is this different from...?
 
 | | otinv | Malcolm / Zeek alone | GRASSMARLIN |
 |---|---|---|---|
-| Reads passive captures | ✅ (via Zeek) | ✅ | ✅ |
-| Plain-English findings for non-experts | ✅ | ❌ | ❌ |
-| Inventory CSV in CISA's vocabulary | ✅ | ❌ | ❌ |
-| Month-to-month diff | ✅ | ❌ | ❌ |
-| Runs on a laptop with nothing else installed (from logs) | ✅ | ❌ | ✅ |
-| Maintained | ✅ | ✅ | ❌ (archived) |
+| Reads passive captures | Yes (via Zeek) | Yes | Yes |
+| Plain-English findings for non-experts | Yes | No | No |
+| Inventory CSV in CISA's vocabulary | Yes | No | No |
+| Month-to-month diff | Yes | No | No |
+| Runs on a laptop with nothing else installed (from logs) | Yes | No | Yes |
+| Maintained | Yes | Yes | No (archived) |
 
 otinv sits on top of Zeek and ICSNPP. It doesn't replace them.
 
@@ -396,6 +421,8 @@ rules/default.toml   the built-in rules
 installer/           Inno Setup and WiX sources, install.ps1 and install.cmd
 scripts/release_notes.py   the release page, checksums and torrents
 scripts/fetch_public_traces.py   downloads the public test captures
+scripts/update_oui.py   rebuilds the built-in MAC vendor list
+data/oui.tsv         the IEEE MAC vendor registry otinv builds in
 docs/                volunteer guide and paper draft
 docker/zeek-icsnpp/  Zeek + ICSNPP image for the docker runner
 tests/               scenario, edge-case, capture and public-capture tests;
