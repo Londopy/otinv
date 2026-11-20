@@ -8,6 +8,28 @@ what appears on its GitHub release page. Validated in CI by
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-19
+
+### Added
+
+- Device identity from BACnet (I-Am and device properties, including location), S7comm component identification, OPC UA server descriptions, Omron FINS controller data, ROC Plus system configuration and C37.118 configuration frames, from zeek logs and from Malcolm exports.
+- Packet numbers for evidence: when otinv runs zeek on a capture, it matches each evidence line to its packet, and the appendix shows the frame number Wireshark uses. Reads pcap and pcapng.
+- `evidence.csv` lists the log lines behind every finding (up to 10,000 each, from 25 before), with packet numbers and a Wireshark filter for each. The appendix still shows the first 25 per finding.
+- Shared copies withhold names, locations and other text that devices announce about themselves; makes, models and firmware stay.
+- `[details]` in site.toml records each device's location, drawings, configuration backup and programming tools, which CISA's CPG 2.0 asks for. They go into new `inventory.csv` columns and are withheld from shared copies.
+- A `configured_from` inventory column: the computers seen sending a device programming or configuration traffic.
+- The Capture workflow now runs zeek natively on Linux and inside WSL on Windows as well as in Docker, and checks otinv against 15 public ICS captures from CISA's ICSNPP and zeek's test suites.
+- A volunteer guide (`docs/volunteer-guide.md`), with how to keep captures encrypted, and a research paper draft (`docs/paper-draft.md`).
+
+### Changed
+
+- New `inventory.csv` columns are added at the end; existing columns keep their order.
+- The capture test is marked ignored instead of passing silently when zeek isn't there.
+
+### Fixed
+
+- The WSL runner passes long paths, so captures and temp folders under 8.3 short names (`C:\Users\RUNNER~1`) open inside WSL.
+
 ## [0.1.1] - 2026-11-19
 
 ### Added
@@ -42,6 +64,7 @@ what appears on its GitHub release page. Validated in CI by
 - A Capture workflow that runs otinv through real Zeek and the ICSNPP parsers on a generated lab capture.
 - Every release lists all its files in `SHA256SUMS.txt` and offers each download as a web-seeded torrent and magnet link.
 
-[Unreleased]: https://github.com/Londopy/otinv/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/Londopy/otinv/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Londopy/otinv/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/Londopy/otinv/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Londopy/otinv/releases/tag/v0.1.0
