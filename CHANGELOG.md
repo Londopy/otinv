@@ -8,13 +8,29 @@ what appears on its GitHub release page. Validated in CI by
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-20
+
+### Added
+
+- The whole IEEE MAC vendor registry (MA-L, MA-M, MA-S and IAB) is built in, so vendor names work offline without `--oui`. `--oui` still reads a newer IEEE file, now of any of these kinds. `scripts/update_oui.py` refreshes the built-in copy.
+- The Capture workflow installs ICSNPP for the native Linux and WSL zeek runs too, so identity, EtherNet/IP and zkg package detection are tested on every runner.
+
+### Changed
+
+- The README says which ICSNPP logs aren't read for identity and why (BSAP, Genisys, GE-SRTP, PROFINET, EtherCAT, HART-IP, C12.22), and why otinv leaves encryption at rest to the disk.
+- The determinism test compares rendered report files, not only the analysis.
+
+### Fixed
+
+- Docs no longer say every evidence line has a packet number; only lines about a TCP or UDP connection do, and only when otinv ran zeek itself.
+
 ## [0.2.0] - 2026-11-19
 
 ### Added
 
 - Device identity from BACnet (I-Am and device properties, including location), S7comm component identification, OPC UA server descriptions, Omron FINS controller data, ROC Plus system configuration and C37.118 configuration frames, from zeek logs and from Malcolm exports.
-- Packet numbers for evidence: when otinv runs zeek on a capture, it matches each evidence line to its packet, and the appendix shows the frame number Wireshark uses. Reads pcap and pcapng.
-- `evidence.csv` lists the log lines behind every finding (up to 10,000 each, from 25 before), with packet numbers and a Wireshark filter for each. The appendix still shows the first 25 per finding.
+- Packet numbers for evidence: when otinv runs zeek on a capture, each evidence line about a TCP or UDP connection gets the frame number Wireshark uses (for a conn.log line, the connection's first packet). Reads pcap and pcapng.
+- `evidence.csv` lists the log lines behind every finding (up to 10,000 each, from 25 before), with a Wireshark filter for each line about a TCP or UDP connection. The appendix still shows the first 25 per finding.
 - Shared copies withhold names, locations and other text that devices announce about themselves; makes, models and firmware stay.
 - `[details]` in site.toml records each device's location, drawings, configuration backup and programming tools, which CISA's CPG 2.0 asks for. They go into new `inventory.csv` columns and are withheld from shared copies.
 - A `configured_from` inventory column: the computers seen sending a device programming or configuration traffic.
@@ -64,7 +80,8 @@ what appears on its GitHub release page. Validated in CI by
 - A Capture workflow that runs otinv through real Zeek and the ICSNPP parsers on a generated lab capture.
 - Every release lists all its files in `SHA256SUMS.txt` and offers each download as a web-seeded torrent and magnet link.
 
-[Unreleased]: https://github.com/Londopy/otinv/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/Londopy/otinv/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/Londopy/otinv/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/Londopy/otinv/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/Londopy/otinv/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Londopy/otinv/releases/tag/v0.1.0
