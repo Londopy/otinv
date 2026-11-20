@@ -113,13 +113,20 @@ pub fn detect(choice: RunnerChoice, zeek: Option<&Path>, image: &str) -> Result<
 
 /// `C:\cap\a.pcap` -> `/mnt/c/cap/a.pcap`
 pub fn wsl_path(p: &Path) -> String {
-    let s = p.to_string_lossy().replace('\\', "/");
+    let s = p.to_string_lossy();
+    let s = s.strip_prefix(r"\\?\").unwrap_or(&s).replace('\\', "/");
     let b = s.as_bytes();
     if b.len() >= 2 && b[1] == b':' {
         format!("/mnt/{}{}", s[..1].to_ascii_lowercase(), &s[2..])
     } else {
         s
     }
+}
+
+/// The full long path when the file exists: Windows temp folders are often
+/// 8.3 short names (C:\Users\RUNNER~1), which WSL can't open.
+fn long_path(p: &Path) -> std::path::PathBuf {
+    std::fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf())
 }
 
 pub fn plan(runner: &Runner, pcap: &Path, logs: &Path) -> Result<Plan> {
@@ -143,6 +150,7 @@ pub fn plan(runner: &Runner, pcap: &Path, logs: &Path) -> Result<Plan> {
             }
         }
         Runner::Wsl(packages) => {
+            let (pcap, logs) = (long_path(&pcap), long_path(&logs));
             zeek_args.push(wsl_path(&pcap));
             zeek_args.extend(scripts(*packages));
             let mut args: Vec<String> =
@@ -218,6 +226,11 @@ mod tests {
     fn wsl_paths() {
         assert_eq!(wsl_path(Path::new("C:\\cap\\a.pcap")), "/mnt/c/cap/a.pcap");
         assert_eq!(wsl_path(Path::new("/home/x/a.pcap")), "/home/x/a.pcap");
+        // what canonicalize returns on Windows
+        assert_eq!(
+            wsl_path(Path::new(r"\\?\D:\Caps\b.pcap")),
+            "/mnt/d/Caps/b.pcap"
+        );
     }
 
     #[test]
