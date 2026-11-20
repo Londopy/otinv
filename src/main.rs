@@ -52,7 +52,7 @@ struct AnalyzeArgs {
     /// Rules file to use instead of the built-in rules
     #[arg(long)]
     rules: Option<PathBuf>,
-    /// IEEE oui.csv for full MAC vendor names (offline copy)
+    /// A newer IEEE oui.csv (or mam.csv, oui36.csv) over the built-in vendor list
     #[arg(long)]
     oui: Option<PathBuf>,
     /// Also write a pseudonymized copy of the reports to <out>/share, for sharing

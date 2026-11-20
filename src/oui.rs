@@ -1,16 +1,19 @@
-// MAC vendor lookup (the first three bytes of a MAC are the maker's OUI).
+// MAC vendor lookup (the first three bytes of a MAC are the maker's OUI, or
+// more for the smaller MA-M and MA-S blocks).
 //
-// the built-in table is a small seed of vendors common on utility control
-// networks, so reports say something useful offline. for full coverage,
-// download the IEEE registry once (https://standards-oui.ieee.org/oui/oui.csv)
-// and pass it with --oui.
-// every entry was checked against the IEEE registry on 2026-11-19.
+// the whole IEEE registry is built in (data/oui.tsv, refreshed with
+// scripts/update_oui.py), so lookups work offline. the short list below
+// gives friendlier names for vendors common on control networks; every
+// entry was checked against the IEEE registry on 2026-11-19. --oui reads a
+// newer IEEE CSV on top.
 
 use anyhow::{Context, Result};
 use std::collections::HashMap;
 use std::path::Path;
 
-const BUILTIN: &[(&str, &str)] = &[
+const REGISTRY: &str = include_str!("../data/oui.tsv");
+
+const FRIENDLY: &[(&str, &str)] = &[
     ("B827EB", "Raspberry Pi Foundation"),
     ("DCA632", "Raspberry Pi Trading"),
     ("E45F01", "Raspberry Pi Trading"),
@@ -36,22 +39,30 @@ const BUILTIN: &[(&str, &str)] = &[
     ("080027", "PCS Systemtechnik (VirtualBox)"),
 ];
 
+/// Assignment lengths in hex digits, longest first: MA-S, MA-M, MA-L.
+const PREFIXES: [usize; 3] = [9, 7, 6];
+
 pub struct Oui {
     table: HashMap<String, String>,
 }
 
 impl Oui {
     pub fn builtin() -> Self {
-        Self {
-            table: BUILTIN
-                .iter()
-                .map(|(k, v)| (k.to_string(), v.to_string()))
-                .collect(),
+        let mut table: HashMap<String, String> = REGISTRY
+            .lines()
+            .filter(|l| !l.starts_with('#'))
+            .filter_map(|l| l.split_once('\t'))
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect();
+        for (k, v) in FRIENDLY {
+            table.insert(k.to_string(), v.to_string());
         }
+        Self { table }
     }
 
-    /// Built-in table plus the IEEE MA-L CSV ("Registry,Assignment,Organization
-    /// Name,Organization Address"). IEEE names win where both have one.
+    /// Built-in table plus an IEEE CSV (oui.csv, mam.csv or oui36.csv:
+    /// "Registry,Assignment,Organization Name,Organization Address"). The
+    /// file's names win where both have one.
     pub fn with_ieee_csv(path: &Path) -> Result<Self> {
         let text =
             std::fs::read_to_string(path).with_context(|| format!("Reading {}", path.display()))?;
@@ -60,7 +71,11 @@ impl Oui {
         for line in text.lines().skip(1) {
             let f = crate::util::parse_csv_line(line);
             if let (Some(a), Some(n)) = (f.get(1), f.get(2)) {
-                if a.len() == 6 && a.chars().all(|c| c.is_ascii_hexdigit()) {
+                // IEEE's name on blocks it splits up says nothing about a device
+                if n.trim() == "IEEE Registration Authority" {
+                    continue;
+                }
+                if PREFIXES.contains(&a.len()) && a.chars().all(|c| c.is_ascii_hexdigit()) {
                     oui.table
                         .insert(a.to_ascii_uppercase(), n.trim().to_string());
                     added += 1;
@@ -85,7 +100,11 @@ impl Oui {
         if first & 0x02 != 0 {
             return Some("(randomized or locally assigned MAC)".into());
         }
-        self.table.get(&hex[..6].to_ascii_uppercase()).cloned()
+        let hex = hex.to_ascii_uppercase();
+        PREFIXES
+            .iter()
+            .find_map(|n| self.table.get(&hex[..*n]))
+            .cloned()
     }
 }
 
@@ -124,7 +143,11 @@ mod tests {
             .vendor("02:00:00:00:00:01")
             .unwrap()
             .contains("randomized"));
-        assert_eq!(o.vendor("00:11:22:33:44:55"), None);
+        // the whole registry is built in, MA-M blocks inside IEEE's own too
+        assert!(o.vendor("00:11:22:33:44:55").is_some());
+        assert!(o
+            .vendor("c8:5c:e2:70:00:01")
+            .is_some_and(|v| v != "IEEE Registration Authority"));
         assert_eq!(o.vendor("nonsense"), None);
     }
 
@@ -146,7 +169,10 @@ mod tests {
         std::fs::write(
             &p,
             "Registry,Assignment,Organization Name,Organization Address\n\
-             MA-L,001122,\"Example, Inc.\",Somewhere\n",
+             MA-L,001122,\"Example, Inc.\",Somewhere\n\
+             MA-L,0C1B2C,IEEE Registration Authority,Piscataway\n\
+             MA-M,0C1B2C3,Medium Block Co,Somewhere\n\
+             MA-S,0C1B2C4D5,Small Block Co,Somewhere\n",
         )
         .unwrap();
         let o = Oui::with_ieee_csv(&p).unwrap();
@@ -154,7 +180,21 @@ mod tests {
             o.vendor("00:11:22:00:00:01").as_deref(),
             Some("Example, Inc.")
         );
-        assert!(o.vendor("00:1d:9c:00:00:01").is_some());
+        // longest assignment wins; IEEE's own umbrella name is never a vendor
+        assert_eq!(
+            o.vendor("0c:1b:2c:30:00:01").as_deref(),
+            Some("Medium Block Co")
+        );
+        assert_eq!(
+            o.vendor("0c:1b:2c:4d:50:01").as_deref(),
+            Some("Small Block Co")
+        );
+        assert_ne!(
+            o.vendor("0c:1b:2c:ff:00:01").as_deref(),
+            Some("IEEE Registration Authority")
+        );
+        // the short names for common control-network vendors beat the registry's
+        assert_eq!(o.vendor("00:0e:8c:00:00:01").as_deref(), Some("Siemens"));
         std::fs::write(&p, "nothing useful\n").unwrap();
         assert!(Oui::with_ieee_csv(&p).is_err());
     }
