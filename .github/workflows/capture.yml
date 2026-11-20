@@ -1,9 +1,12 @@
 name: Capture
 
-# end to end through a real zeek: builds the zeek + ICSNPP image, writes the
-# lab capture, and checks otinv's findings on it (tests/capture.rs). separate
-# from ci.yml because building the image takes several minutes; the cache
-# makes later runs fast.
+# end to end through a real zeek, every way otinv can run it:
+#   docker  the zeek + ICSNPP image: the lab capture (tests/capture.rs) and
+#           the public ICS captures (tests/public_traces.rs)
+#   native  zeek from the project's Ubuntu packages, on PATH
+#   wsl     the same zeek inside WSL, driven from Windows
+# separate from ci.yml because building the image takes several minutes; the
+# cache makes later runs fast.
 on:
   workflow_dispatch:
   pull_request:
@@ -12,7 +15,10 @@ on:
       - "rules/**"
       - "docker/**"
       - "tests/capture.rs"
+      - "tests/public_traces.rs"
+      - "tests/public-traces.txt"
       - "tests/fixtures/make_lab_pcap.py"
+      - "scripts/fetch_public_traces.py"
       - "Cargo.*"
       - ".github/workflows/capture.yml"
   push:
@@ -29,8 +35,8 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  capture:
-    name: Capture through zeek + ICSNPP
+  docker:
+    name: Docker zeek + ICSNPP
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -54,9 +60,15 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Run the capture test
+        run: cargo test --test capture -- --ignored --nocapture
+
+      - name: Fetch the public captures
+        run: python3 scripts/fetch_public_traces.py target/public-traces
+
+      - name: Run the public capture tests
         env:
-          OTINV_CAPTURE_TEST: "1"
-        run: cargo test --test capture -- --nocapture
+          OTINV_PUBLIC_TRACES: target/public-traces
+        run: cargo test --test public_traces -- --ignored
 
       # the capture is synthetic, so zeek's raw logs are safe to keep, and
       # they are what to read when the test disagrees with real zeek
@@ -67,3 +79,68 @@ jobs:
           name: zeek-logs
           path: /tmp/otinv-capture-test/report/zeek-logs
           if-no-files-found: ignore
+
+  native:
+    name: Native zeek (Linux)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install zeek
+        run: |
+          echo 'deb http://download.opensuse.org/repositories/security:/zeek/xUbuntu_24.04/ /' \
+            | sudo tee /etc/apt/sources.list.d/security:zeek.list
+          curl -fsSL --max-time 60 https://download.opensuse.org/repositories/security:zeek/xUbuntu_24.04/Release.key \
+            | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/security_zeek.gpg > /dev/null
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends zeek
+          echo /opt/zeek/bin >> "$GITHUB_PATH"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Run the capture test
+        env:
+          OTINV_CAPTURE_RUNNER: native
+        run: |
+          zeek --version
+          cargo test --test capture -- --ignored --nocapture
+
+  wsl:
+    name: Zeek in WSL (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: Vampire/setup-wsl@v7
+        with:
+          distribution: Ubuntu-24.04
+          set-as-default: "true"
+          additional-packages: curl gpg ca-certificates
+
+      - name: Install zeek in WSL
+        shell: wsl-bash {0}
+        run: |
+          set -e
+          echo 'deb http://download.opensuse.org/repositories/security:/zeek/xUbuntu_24.04/ /' \
+            > /etc/apt/sources.list.d/security:zeek.list
+          curl -fsSL --max-time 60 https://download.opensuse.org/repositories/security:zeek/xUbuntu_24.04/Release.key \
+            | gpg --dearmor > /etc/apt/trusted.gpg.d/security_zeek.gpg
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends zeek
+          # `wsl -e zeek` runs without a login shell, so zeek has to be on the default PATH
+          ln -sf /opt/zeek/bin/zeek /usr/local/bin/zeek
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Run the capture test
+        env:
+          OTINV_CAPTURE_RUNNER: wsl
+        run: |
+          wsl -e zeek --version
+          cargo test --test capture -- --ignored --nocapture
