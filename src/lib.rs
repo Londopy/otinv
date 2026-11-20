@@ -13,6 +13,7 @@ pub mod malcolm;
 pub mod model;
 pub mod net;
 pub mod oui;
+pub mod pcap;
 pub mod pipeline;
 pub mod pseudo;
 pub mod report;

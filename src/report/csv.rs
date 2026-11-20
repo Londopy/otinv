@@ -4,7 +4,7 @@
 // OT or IT, make/model, firmware, network address, communication) so the file
 // can be handed to an inspector or insurer as-is. README explains each column.
 
-use crate::model::Run;
+use crate::model::{Evidence, Run};
 use crate::timefmt;
 use crate::util::csv_line;
 
@@ -27,6 +27,11 @@ pub const INVENTORY_COLUMNS: &[&str] = &[
     "last_seen_utc",
     "open_findings",
     "role_basis",
+    "location",
+    "drawings",
+    "config_backup",
+    "tools",
+    "configured_from",
 ];
 
 pub fn inventory(run: &Run) -> String {
@@ -64,11 +69,88 @@ pub fn inventory(run: &Run) -> String {
             timefmt::utc(a.last_seen),
             findings.join("; "),
             basis.join("; "),
+            a.details.location.clone(),
+            a.details.drawings.clone(),
+            a.details.config_backup.clone(),
+            a.details.tools.clone(),
+            a.configured_from
+                .iter()
+                .cloned()
+                .collect::<Vec<_>>()
+                .join("; "),
         ];
         out.push_str(&csv_line(&row));
         out.push('\n');
     }
     out
+}
+
+/// Every log line behind every finding, with a Wireshark filter that finds
+/// its packet.
+pub fn evidence(run: &Run) -> String {
+    let mut out = csv_line(&[
+        "finding",
+        "severity",
+        "device",
+        "log_file",
+        "log_line",
+        "frame",
+        "time_utc",
+        "from",
+        "to",
+        "what",
+        "zeek_uid",
+        "wireshark_filter",
+    ]);
+    out.push('\n');
+    for f in &run.findings {
+        for e in &f.evidence {
+            let row = [
+                f.rule.clone(),
+                f.severity.label().to_string(),
+                f.host.clone(),
+                e.file.clone(),
+                e.line.to_string(),
+                e.frame.map(|n| n.to_string()).unwrap_or_default(),
+                e.ts.map(timefmt::utc).unwrap_or_default(),
+                e.src.clone().unwrap_or_default(),
+                e.dst.clone().unwrap_or_default(),
+                e.what.clone(),
+                e.uid.clone().unwrap_or_default(),
+                wireshark_filter(e, run.pseudonymized),
+            ];
+            out.push_str(&csv_line(&row));
+            out.push('\n');
+        }
+    }
+    out
+}
+
+/// `frame.number == 412` when the packet is known, else the conversation
+/// (both addresses and ports) from that time on. Aliases aren't addresses,
+/// so a pseudonymized run only gets the frame form.
+fn wireshark_filter(e: &Evidence, pseudonymized: bool) -> String {
+    if let Some(n) = e.frame {
+        return format!("frame.number == {n}");
+    }
+    let (Some(src), Some(dst), Some((sp, dp)), false) =
+        (e.src.as_deref(), e.dst.as_deref(), e.ports, pseudonymized)
+    else {
+        return String::new();
+    };
+    let ip = if src.contains(':') { "ipv6" } else { "ip" };
+    let mut f = format!(
+        "{ip}.addr == {src} && {ip}.addr == {dst} && \
+         ((tcp.port == {sp} && tcp.port == {dp}) || (udp.port == {sp} && udp.port == {dp}))"
+    );
+    if let Some(t) = e.ts {
+        // to the microsecond, rounded down: zeek's time is the packet's
+        f.push_str(&format!(
+            " && frame.time_epoch >= {:.6}",
+            (t * 1e6).floor() / 1e6
+        ));
+    }
+    f
 }
 
 pub fn comms(run: &Run) -> String {

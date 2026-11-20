@@ -1,10 +1,13 @@
 // the HTML appendix and diff: one self-contained file each, no scripts, no
 // fonts, no network requests, so they open the same on an air-gapped laptop.
 
-use super::{actions, describe, device_counts, period, severity_counts, title, who, SENSITIVE};
+use super::{
+    actions, describe, device_counts, device_facts, evidence_count, period, severity_counts, title,
+    who, SENSITIVE, SHOWN_EVIDENCE,
+};
 use crate::config::Severity;
 use crate::diff::RunDiff;
-use crate::model::{Evidence, Run};
+use crate::model::{Finding, Run};
 use crate::timefmt;
 use crate::util::{english_list, html, plural};
 use std::fmt::Write;
@@ -83,24 +86,23 @@ fn header(o: &mut String, run: &Run, heading: &str) {
     o.push_str("</p>");
 }
 
-fn evidence_table(o: &mut String, ev: &[Evidence], total: usize) {
-    let shown = if total > ev.len() {
-        format!("first {} of {total} log lines", ev.len())
-    } else {
-        plural(total, "log line", "log lines")
-    };
+fn evidence_table(o: &mut String, f: &Finding) {
     let _ = write!(
         o,
-        "<details><summary>Evidence ({shown})</summary><div class=\"scroll\"><table>\
-         <tr><th>Source</th><th>Time</th><th>From</th><th>To</th><th>What</th><th>Zeek uid</th></tr>"
+        "<details><summary>Evidence ({})</summary><div class=\"scroll\"><table>\
+         <tr><th>Source</th><th>Frame</th><th>Time</th><th>From</th><th>To</th><th>What</th>\
+         <th>Zeek uid</th></tr>",
+        html(&evidence_count(f))
     );
-    for e in ev {
+    for e in f.evidence.iter().take(SHOWN_EVIDENCE) {
         let _ = write!(
             o,
-            "<tr><td class=\"mono\">{}:{}</td><td>{}</td><td class=\"mono\">{}</td>\
-             <td class=\"mono\">{}</td><td>{}</td><td class=\"mono\">{}</td></tr>",
+            "<tr><td class=\"mono\">{}:{}</td><td class=\"mono\">{}</td><td>{}</td>\
+             <td class=\"mono\">{}</td><td class=\"mono\">{}</td><td>{}</td>\
+             <td class=\"mono\">{}</td></tr>",
             html(&e.file),
             e.line,
+            e.frame.map(|n| n.to_string()).unwrap_or_default(),
             e.ts.map(timefmt::utc).unwrap_or_default(),
             html(e.src.as_deref().unwrap_or("")),
             html(e.dst.as_deref().unwrap_or("")),
@@ -212,7 +214,7 @@ pub fn appendix(run: &Run) -> String {
         }
         for f in &a.findings {
             let _ = write!(o, "<p>{} {}</p>", sev(f.severity), html(&describe(run, f)));
-            evidence_table(&mut o, &f.evidence, f.evidence_total);
+            evidence_table(&mut o, f);
         }
         o.push_str("</div>");
     }
@@ -227,6 +229,7 @@ pub fn appendix(run: &Run) -> String {
             .identity
             .iter()
             .map(|(k, v)| format!("{k}: {v}"))
+            .chain(device_facts(run, a))
             .collect();
         let why: Vec<String> = a
             .reasons

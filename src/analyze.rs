@@ -14,6 +14,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::net::IpAddr;
 
 const MAX_REASONS: usize = 6;
+/// PMU station names kept per device; a stream can carry many.
+const MAX_STATIONS: usize = 20;
 
 /// Builds an Evidence pointing at one log line.
 pub fn evidence(
@@ -30,7 +32,28 @@ pub fn evidence(
         ts: rec.ts(),
         src: src.map(|i| i.to_string()),
         dst: dst.map(|i| i.to_string()),
+        ports: ports(rec, src, dst),
+        frame: None,
         what,
+    }
+}
+
+/// The connection's ports in src, dst order, when src and dst are its two ends.
+fn ports(rec: &Record, src: Option<IpAddr>, dst: Option<IpAddr>) -> Option<(u16, u16)> {
+    let (src, dst) = (src?, dst?);
+    let end = |h: &str, p: &str| -> Option<(IpAddr, u16)> {
+        Some((parse_ip(rec.get(h)?)?, rec.get(p)?.parse().ok()?))
+    };
+    let (o, r) = (
+        end("id.orig_h", "id.orig_p")?,
+        end("id.resp_h", "id.resp_p")?,
+    );
+    if (src, dst) == (o.0, r.0) {
+        Some((o.1, r.1))
+    } else if (src, dst) == (r.0, o.0) {
+        Some((r.1, o.1))
+    } else {
+        None
     }
 }
 
@@ -264,6 +287,177 @@ impl Host {
     }
 }
 
+/// Addresses that speak for more than one BACnet device: routers and
+/// gateways answering for the devices behind them, which have no address of
+/// their own. Giving the router their identity would be wrong.
+fn bacnet_routers(log: &Log) -> BTreeSet<IpAddr> {
+    if !log.name.starts_with("bacnet") {
+        return BTreeSet::new();
+    }
+    let mut seen: BTreeMap<IpAddr, BTreeSet<&str>> = BTreeMap::new();
+    for rec in &log.records {
+        let (Some(ip), Some(n)) = (
+            rec.get("source_h").and_then(parse_ip),
+            rec.get("instance_number"),
+        ) else {
+            continue;
+        };
+        if rec.get("object_type") == Some("device") {
+            seen.entry(ip).or_default().insert(n);
+        }
+    }
+    seen.into_iter()
+        .filter(|(_, n)| n.len() > 1)
+        .map(|(ip, _)| ip)
+        .collect()
+}
+
+fn value<'r>(rec: &'r Record, names: &[&str]) -> Option<&'r str> {
+    rec.get_any(names)
+        .map(str::trim)
+        .filter(|v| !matches!(*v, "" | "-" | "(empty)"))
+}
+
+/// What an identity log line says, and which device it describes. Zeek's
+/// HART-IP, C12.22, PROFINET, EtherCAT and GE-SRTP logs aren't read: their
+/// identity either belongs to an instrument behind a gateway, with no address
+/// of its own, or isn't decoded into fields.
+fn identity(
+    log: &str,
+    rec: &Record,
+    server: IpAddr,
+) -> Option<(IpAddr, Vec<(&'static str, String)>)> {
+    let pick = |pairs: &[(&'static str, &[&str])]| -> Vec<(&'static str, String)> {
+        pairs
+            .iter()
+            .filter_map(|(k, names)| value(rec, names).map(|v| (*k, v.to_string())))
+            .collect()
+    };
+    // the sender of the line, for logs written once per packet
+    let sender = || {
+        rec.get("source_h")
+            .and_then(parse_ip)
+            .or_else(|| rec.get("id.orig_h").and_then(parse_ip))
+    };
+    let (device, found) = match log {
+        // ICSNPP-ENIP: List Identity replies
+        l if l.starts_with("cip_identity") || l == "enip_list_identity" => (
+            server,
+            pick(&[
+                ("vendor", &["vendor_name", "vendor_id"]),
+                ("model", &["product_name"]),
+                ("device type", &["device_type_name", "device_type_id"]),
+                ("product code", &["product_code"]),
+                ("firmware", &["revision"]),
+                ("serial", &["serial_number"]),
+            ]),
+        ),
+        // ICSNPP-Modbus: Read Device Identification (function 43/14). The
+        // numeric code is the spec's; names differ (ICSNPP says
+        // MajorMinorVersion where the spec says MajorMinorRevision)
+        l if l.starts_with("modbus_read_device_identification") => {
+            let id = rec.get_any(&["object_id_code", "object_id", "object_name"])?;
+            let key = match id.to_ascii_lowercase().trim_start_matches("0x") {
+                "0" | "00" | "vendorname" | "vendor_name" => "vendor",
+                "1" | "01" | "productcode" | "product_code" => "product code",
+                "2" | "02" | "majorminorrevision" | "majorminorversion" => "firmware",
+                "4" | "04" | "productname" | "product_name" => "model",
+                "5" | "05" | "modelname" | "model_name" => "model",
+                _ => return None,
+            };
+            let v = value(rec, &["object_value", "value"])?;
+            (server, vec![(key, v.to_string())])
+        }
+        // I-Am, usually broadcast by the device itself
+        "bacnet_discovery" if rec.get("pdu_service") == Some("i-am") => (
+            sender()?,
+            pick(&[
+                ("vendor", &["vendor"]),
+                ("BACnet device", &["instance_number"]),
+            ]),
+        ),
+        // the device object's properties, from the device's own reply
+        "bacnet_property"
+            if rec.get("object_type") == Some("device")
+                && rec.get("pdu_service").is_some_and(|p| p.ends_with("-ack")) =>
+        {
+            let key = match rec.get("property")? {
+                "vendor-name" => "vendor",
+                "model-name" => "model",
+                "firmware-revision" => "firmware",
+                "application-software-version" => "software",
+                "object-name" => "device name",
+                "location" => "location",
+                _ => return None,
+            };
+            (sender()?, vec![(key, value(rec, &["value"])?.to_string())])
+        }
+        // SZL 0x001C (component identification), one line per connection
+        "s7comm_known_devices" => (
+            rec.get("id.resp_h").and_then(parse_ip)?,
+            pick(&[
+                ("model", &["module_name"]),
+                ("serial", &["module_serial"]),
+                ("system name", &["automation_system_name"]),
+                ("plant", &["plant_name"]),
+            ]),
+        ),
+        // the server's own description, from its responses
+        "opcua_binary_get_endpoints_description" | "opcua_binary_create_session_endpoints"
+            if matches!(rec.get("is_orig"), Some("F" | "false")) =>
+        {
+            (
+                server,
+                pick(&[
+                    ("application", &["text"]),
+                    ("product URI", &["product_uri"]),
+                    ("application URI", &["application_uri"]),
+                ]),
+            )
+        }
+        "omron_fins_detail"
+            if rec
+                .get("command_code")
+                .is_some_and(|c| c.starts_with("Controller Data Read"))
+                && rec
+                    .get("icf_data_type")
+                    .is_some_and(|t| t.starts_with("Response")) =>
+        {
+            (
+                rec.get("id.resp_h").and_then(parse_ip)?,
+                pick(&[
+                    ("model", &["controller_model"]),
+                    ("firmware", &["controller_version"]),
+                ]),
+            )
+        }
+        // only written for System Configuration (opcode 6) replies
+        "roc_plus_sys_cfg" => (
+            rec.get("id.resp_h").and_then(parse_ip)?,
+            pick(&[("model", &["type_of_roc"])]),
+        ),
+        // configuration frames come from the PMU, the side on the C37.118 port
+        "synchrophasor_cfg_detail" => {
+            let name = value(rec, &["station_name"])?;
+            let pmu = match value(rec, &["data_source_id"]) {
+                Some(id) => format!("{name} (ID {id})"),
+                None => name.to_string(),
+            };
+            let orig_is_pmu = rec
+                .get("id.orig_p")
+                .is_some_and(|p| p == "4712" || p == "4713");
+            let side = if orig_is_pmu {
+                "id.orig_h"
+            } else {
+                "id.resp_h"
+            };
+            (rec.get(side).and_then(parse_ip)?, vec![("PMU", pmu)])
+        }
+        _ => return None,
+    };
+    (!found.is_empty()).then_some((device, found))
+}
+
 pub struct Inventory {
     pub assets: Vec<Asset>,
     pub externals: Vec<External>,
@@ -283,6 +477,8 @@ struct Builder<'a> {
     last_ts: Option<f64>,
     // MACs carrying internet addresses: a router's, whatever local IPs it also shows
     router_macs: BTreeSet<String>,
+    // (device, computer) pairs where the computer programmed or configured it
+    configured: BTreeSet<(IpAddr, IpAddr)>,
 }
 
 impl<'a> Builder<'a> {
@@ -292,6 +488,12 @@ impl<'a> Builder<'a> {
 
     fn public(&self, ip: &IpAddr) -> bool {
         is_device_address(ip) && !is_local(ip, &self.site.ranges)
+    }
+
+    fn configured_by(&mut self, device: IpAddr, from: IpAddr) {
+        if self.local(&device) && self.local(&from) {
+            self.configured.insert((device, from));
+        }
     }
 
     /// The host entry for a local device address, or None for anything else.
@@ -377,6 +579,9 @@ impl<'a> Builder<'a> {
             }
         }
 
+        if c.is(Kind::Engineering) && c.exchanged && !c.is(Kind::Ot) {
+            self.configured_by(c.resp, c.orig);
+        }
         let ev = || c.evidence(c.describe());
         if let Some(h) = self.host(c.orig) {
             h.uses.insert(label.clone());
@@ -455,6 +660,9 @@ impl<'a> Builder<'a> {
             self.period(ts, None);
             let func = rec.get(field).unwrap_or("");
             let request = request_function(rec, field);
+            if request.as_ref().is_some_and(|f| engineering.contains(f)) {
+                self.configured_by(server, client);
+            }
             let ev = |what: String| evidence(&log.file, rec, Some(client), Some(server), what);
             if let Some(h) = self.host(client) {
                 h.seen(ts, None, || ev(format!("first traffic ({label} {func})")));
@@ -501,73 +709,53 @@ impl<'a> Builder<'a> {
 
     /// Identity fields devices announce about themselves.
     fn identity_log(&mut self, log: &Log) {
-        // ICSNPP-ENIP: List Identity replies
-        let enip = log.name.starts_with("cip_identity") || log.name == "enip_list_identity";
-        // ICSNPP-Modbus: Read Device Identification (function 43/14)
-        let modbus = log.name.starts_with("modbus_read_device_identification");
-        if !enip && !modbus {
-            return;
-        }
+        let routers = bacnet_routers(log);
         for rec in &log.records {
             let Some((client, server)) = endpoints(rec) else {
                 continue;
             };
+            let Some((device, found)) = identity(&log.name, rec, server) else {
+                continue;
+            };
+            if routers.contains(&device) {
+                continue;
+            }
             // the device's own address, when the reply carries one
             let device = rec
                 .get("socket_address")
                 .and_then(parse_ip)
                 .filter(|ip| self.local(ip))
-                .unwrap_or(server);
+                .unwrap_or(device);
+            let peer = if device == client { server } else { client };
             let ts = rec.ts();
             self.period(ts, None);
-            let mut found: Vec<(&str, String)> = Vec::new();
-            if enip {
-                for (key, names) in [
-                    ("vendor", &["vendor_name", "vendor_id"][..]),
-                    ("model", &["product_name"][..]),
-                    ("device type", &["device_type_name", "device_type_id"][..]),
-                    ("product code", &["product_code"][..]),
-                    ("firmware", &["revision"][..]),
-                    ("serial", &["serial_number"][..]),
-                ] {
-                    if let Some(v) = rec.get_any(names).filter(|v| !v.is_empty()) {
-                        found.push((key, v.to_string()));
-                    }
-                }
-            } else if let (Some(id), Some(val)) = (
-                // the numeric code is the spec's; names differ (ICSNPP says
-                // MajorMinorVersion where the spec says MajorMinorRevision)
-                rec.get_any(&["object_id_code", "object_id", "object_name"]),
-                rec.get_any(&["object_value", "value"]),
-            ) {
-                let key = match id.to_ascii_lowercase().trim_start_matches("0x") {
-                    "0" | "00" | "vendorname" | "vendor_name" => Some("vendor"),
-                    "1" | "01" | "productcode" | "product_code" => Some("product code"),
-                    "2" | "02" | "majorminorrevision" | "majorminorversion" => Some("firmware"),
-                    "4" | "04" | "productname" | "product_name" => Some("model"),
-                    "5" | "05" | "modelname" | "model_name" => Some("model"),
-                    _ => None,
-                };
-                if let Some(k) = key.filter(|_| !val.is_empty()) {
-                    found.push((k, val.to_string()));
-                }
-            }
-            if found.is_empty() {
-                continue;
-            }
             let file = log.file.clone();
             if let Some(h) = self.host(device) {
                 h.seen(ts, None, || {
                     evidence(
                         &file,
                         rec,
-                        Some(client),
+                        Some(peer),
                         Some(device),
                         "identity reply".into(),
                     )
                 });
                 for (k, v) in found {
-                    h.identity.entry(k.to_string()).or_insert(v);
+                    match h.identity.get_mut(k) {
+                        // a PMU stream can carry several stations
+                        Some(old)
+                            if k == "PMU"
+                                && old.split("; ").count() < MAX_STATIONS
+                                && !old.split("; ").any(|o| o == v) =>
+                        {
+                            old.push_str("; ");
+                            old.push_str(&v);
+                        }
+                        Some(_) => {}
+                        None => {
+                            h.identity.insert(k.to_string(), v);
+                        }
+                    }
                 }
             }
         }
@@ -618,6 +806,7 @@ impl<'a> Builder<'a> {
                 continue;
             }
             let label = c.label();
+            self.configured_by(c.resp, c.orig);
             if let Some(h) = self.host(c.orig) {
                 h.role(
                     Role::EngineeringWorkstation,
@@ -697,6 +886,13 @@ impl<'a> Builder<'a> {
                 roles,
                 reasons,
                 identity: h.identity.clone(),
+                details: self.site.details.get(&ip_s).cloned().unwrap_or_default(),
+                configured_from: self
+                    .configured
+                    .iter()
+                    .filter(|(d, _)| d == ip)
+                    .map(|(_, from)| from.to_string())
+                    .collect(),
                 serves: h.serves.clone(),
                 uses: h.uses.clone(),
                 peers: h.peers.len(),
@@ -728,6 +924,7 @@ pub fn inventory(logs: &[Log], conns: &[Conn], rules: &Rules, site: &Site, oui: 
         first_ts: None,
         last_ts: None,
         router_macs: BTreeSet::new(),
+        configured: BTreeSet::new(),
     };
     for c in conns {
         b.conn(c);
@@ -780,5 +977,135 @@ mod tests {
         );
         let r = Record::from_pairs(1, &[("id.orig_h", "10.0.2.20"), ("id.resp_h", "10.0.1.10")]);
         assert_eq!(endpoints(&r).unwrap().1.to_string(), "10.0.1.10");
+    }
+
+    #[test]
+    fn identity_only_from_the_devices_own_replies() {
+        let server: IpAddr = "10.0.1.10".parse().unwrap();
+        let bacnet = |pairs: &[(&str, &str)]| {
+            let mut all = vec![
+                ("source_h", "10.0.1.10"),
+                ("destination_h", "10.0.2.20"),
+                ("object_type", "device"),
+                ("property", "model-name"),
+            ];
+            all.extend_from_slice(pairs);
+            identity("bacnet_property", &Record::from_pairs(1, &all), server)
+        };
+        let ack = bacnet(&[("pdu_service", "read-property-ack"), ("value", "HIY-054")]);
+        assert_eq!(ack.unwrap().1, [("model", "HIY-054".to_string())]);
+        // the request, and an empty answer, say nothing
+        assert!(bacnet(&[("pdu_service", "read-property-request")]).is_none());
+        assert!(bacnet(&[("pdu_service", "read-property-ack"), ("value", "(empty)")]).is_none());
+        // a sensor point's name is not the device's name
+        let point = Record::from_pairs(
+            1,
+            &[
+                ("source_h", "10.0.1.10"),
+                ("pdu_service", "read-property-ack"),
+                ("object_type", "analog-input"),
+                ("property", "object-name"),
+                ("value", "Sensor_1"),
+            ],
+        );
+        assert!(identity("bacnet_property", &point, server).is_none());
+
+        // OPC UA: CreateSession requests carry the client's description
+        let client_desc = Record::from_pairs(1, &[("is_orig", "T"), ("text", "UaExpert")]);
+        assert!(identity(
+            "opcua_binary_create_session_endpoints",
+            &client_desc,
+            server
+        )
+        .is_none());
+        // FINS: only controller data read responses
+        let cmd = Record::from_pairs(
+            1,
+            &[
+                ("id.resp_h", "10.0.1.10"),
+                ("command_code", "Controller Data Read (0x0501)"),
+                ("icf_data_type", "Command (0)"),
+                ("controller_model", "CJ2M"),
+            ],
+        );
+        assert!(identity("omron_fins_detail", &cmd, server).is_none());
+    }
+
+    #[test]
+    fn identity_goes_to_the_device_not_the_other_side() {
+        // `server` is what endpoints() said; some logs know better
+        let elsewhere: IpAddr = "10.9.9.9".parse().unwrap();
+        let device = |log: &str, pairs: &[(&str, &str)]| {
+            identity(log, &Record::from_pairs(1, pairs), elsewhere).map(|(ip, _)| ip.to_string())
+        };
+        // a broadcast I-Am belongs to its sender, not the broadcast address
+        let i_am = [
+            ("source_h", "10.0.1.30"),
+            ("destination_h", "10.0.1.255"),
+            ("pdu_service", "i-am"),
+            ("vendor", "Acme"),
+        ];
+        assert_eq!(
+            device("bacnet_discovery", &i_am).as_deref(),
+            Some("10.0.1.30")
+        );
+        let s7 = [("id.resp_h", "10.0.1.40"), ("module_name", "CPU 1214C")];
+        assert_eq!(
+            device("s7comm_known_devices", &s7).as_deref(),
+            Some("10.0.1.40")
+        );
+        let roc = [("id.resp_h", "10.0.1.41"), ("type_of_roc", "FloBoss 107")];
+        assert_eq!(
+            device("roc_plus_sys_cfg", &roc).as_deref(),
+            Some("10.0.1.41")
+        );
+        // a PMU is the side on the C37.118 port, whichever end started
+        let pmu = |orig_p: &str, resp_p: &str| {
+            device(
+                "synchrophasor_cfg_detail",
+                &[
+                    ("id.orig_h", "10.0.3.1"),
+                    ("id.orig_p", orig_p),
+                    ("id.resp_h", "10.0.3.2"),
+                    ("id.resp_p", resp_p),
+                    ("station_name", "Sub 4"),
+                ],
+            )
+        };
+        assert_eq!(pmu("50000", "4712").as_deref(), Some("10.0.3.2"));
+        assert_eq!(pmu("4713", "4713").as_deref(), Some("10.0.3.1"));
+        // OPC UA and EtherNet/IP trust endpoints()
+        let ua = [("is_orig", "F"), ("text", "Plant OPC server")];
+        assert_eq!(
+            device("opcua_binary_get_endpoints_description", &ua).as_deref(),
+            Some("10.9.9.9")
+        );
+    }
+
+    #[test]
+    fn a_bacnet_router_isnt_given_the_identity_of_devices_behind_it() {
+        let rec = |src: &str, n: &str| {
+            Record::from_pairs(
+                1,
+                &[
+                    ("source_h", src),
+                    ("object_type", "device"),
+                    ("instance_number", n),
+                ],
+            )
+        };
+        let log = Log {
+            name: "bacnet_discovery".into(),
+            file: "bacnet_discovery.log".into(),
+            format: crate::zeek::Format::Tsv,
+            records: vec![
+                rec("10.0.1.5", "10"),
+                rec("10.0.1.5", "11"),
+                rec("10.0.1.6", "12"),
+            ],
+            skipped: 0,
+        };
+        let r: Vec<String> = bacnet_routers(&log).iter().map(|i| i.to_string()).collect();
+        assert_eq!(r, ["10.0.1.5"]);
     }
 }

@@ -12,6 +12,9 @@ use std::path::Path;
 /// a small utility's inventory is a few megabytes.
 const MAX_RUN_BYTES: u64 = 256 * 1024 * 1024;
 const RUN_ENTRY: &str = "run.json";
+/// Evidence lines saved per finding. The run file feeds diffs and
+/// --previous, which don't need them all; evidence.csv has every one.
+const SAVED_EVIDENCE: usize = 100;
 pub const RUN_KIND: &str = "run";
 
 pub struct Inputs<'a> {
@@ -66,6 +69,21 @@ pub fn save_run(run: &Run, path: &Path) -> Result<()> {
         run.site.clone()
     };
     let manifest = londopy::Manifest::new(RUN_KIND, &title, &run.generated);
+    let slim;
+    let run = if run
+        .findings
+        .iter()
+        .any(|f| f.evidence.len() > SAVED_EVIDENCE)
+    {
+        let mut r = run.clone();
+        for f in &mut r.findings {
+            f.evidence.truncate(SAVED_EVIDENCE);
+        }
+        slim = r;
+        &slim
+    } else {
+        run
+    };
     let json = serde_json::to_vec_pretty(run)?;
     londopy::write(path, &manifest, &[(RUN_ENTRY, &json)])
 }

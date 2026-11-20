@@ -24,8 +24,73 @@ const USED_LOGS: &[&str] = &[
 ];
 const USED_LOG_PREFIXES: &[&str] = &["cip_identity", "modbus_read_device_identification"];
 
+/// ICSNPP logs where devices describe themselves, and the fields otinv
+/// reads from each (besides the ones every log has).
+pub const IDENTITY_LOGS: &[(&str, &[&str])] = &[
+    (
+        "bacnet_discovery",
+        &["pdu_service", "instance_number", "vendor"],
+    ),
+    (
+        "bacnet_property",
+        &["pdu_service", "object_type", "property", "value"],
+    ),
+    (
+        "s7comm_known_devices",
+        &[
+            "module_name",
+            "module_serial",
+            "automation_system_name",
+            "plant_name",
+        ],
+    ),
+    (
+        "opcua_binary_get_endpoints_description",
+        &["application_uri", "product_uri", "text"],
+    ),
+    (
+        "opcua_binary_create_session_endpoints",
+        &["application_uri", "product_uri", "text"],
+    ),
+    (
+        "omron_fins_detail",
+        &[
+            "command_code",
+            "icf_data_type",
+            "controller_model",
+            "controller_version",
+        ],
+    ),
+    ("roc_plus_sys_cfg", &["type_of_roc"]),
+    (
+        "synchrophasor_cfg_detail",
+        &["station_name", "data_source_id"],
+    ),
+];
+
 pub fn is_used(name: &str) -> bool {
-    USED_LOGS.contains(&name) || USED_LOG_PREFIXES.iter().any(|p| name.starts_with(p))
+    USED_LOGS.contains(&name)
+        || USED_LOG_PREFIXES.iter().any(|p| name.starts_with(p))
+        || IDENTITY_LOGS.iter().any(|(n, _)| *n == name)
+}
+
+/// Whether a record is worth keeping. Most lines of some identity logs are
+/// about other things (sensor points, commands); keeping only the useful
+/// ones stops a big log from filling memory.
+pub fn wanted(log: &str, rec: &Record) -> bool {
+    match log {
+        "bacnet_discovery" => rec.get("pdu_service") == Some("i-am"),
+        "bacnet_property" => {
+            rec.get("object_type") == Some("device")
+                && rec.get("pdu_service").is_some_and(|p| p.ends_with("-ack"))
+        }
+        "omron_fins_detail" => rec.get("controller_model").is_some(),
+        _ => true,
+    }
+}
+
+fn kept(key: &str) -> bool {
+    KEPT.contains(&key) || IDENTITY_LOGS.iter().any(|(_, f)| f.contains(&key))
 }
 
 /// The only fields kept. Add a field here when code starts reading it.
@@ -162,7 +227,7 @@ impl Record {
             }
             return;
         }
-        if KEPT.contains(&key) {
+        if kept(key) {
             self.fields.insert(key.to_string(), value.to_string());
         }
     }
@@ -353,7 +418,9 @@ pub fn parse(file_name: &str, mut reader: impl BufRead) -> Result<Log> {
                 if let Some(p) = rec.get("_path") {
                     name = p.to_string();
                 }
-                records.push(rec);
+                if wanted(&name, &rec) {
+                    records.push(rec);
+                }
             }
             Format::Tsv => {
                 if let Some(h) = text.strip_prefix('#') {
@@ -404,7 +471,9 @@ pub fn parse(file_name: &str, mut reader: impl BufRead) -> Result<Log> {
                     };
                     rec.set(k, &v);
                 }
-                records.push(rec);
+                if wanted(&name, &rec) {
+                    records.push(rec);
+                }
             }
         }
     }

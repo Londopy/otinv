@@ -4,7 +4,7 @@ use otinv::config::{Rules, Site, DEFAULT_RULES, SITE_TEMPLATE};
 use otinv::model::Run;
 use otinv::oui::Oui;
 use otinv::runner::{self, RunnerChoice, DEFAULT_IMAGE};
-use otinv::{diff, malcolm, pipeline, pseudo, report, timefmt, util, zeek};
+use otinv::{diff, malcolm, pcap, pipeline, pseudo, report, timefmt, util, zeek};
 use std::path::{Path, PathBuf};
 
 // the cli's own module, not the library's: the analysis code stays network-free
@@ -366,6 +366,17 @@ fn analyze(a: AnalyzeArgs) -> Result<()> {
         generated: timefmt::rfc3339(timefmt::now()),
     });
     run.compared_to = a.previous.as_deref().map(short_path);
+    for ip in site.details.keys() {
+        if run.asset(ip).is_none() {
+            eprintln!("otinv: site.toml has [details] for {ip}, which wasn't seen in this capture");
+        }
+    }
+    if a.input.is_file() && is_capture(&a.input) {
+        match pcap::number_frames(&a.input, &mut run) {
+            Ok(n) => eprintln!("otinv: matched {n} evidence lines to packets in the capture"),
+            Err(e) => eprintln!("otinv: no packet numbers in the reports: {e:#}"),
+        }
+    }
 
     clear_outputs(&a.out)?;
     let d = previous.as_ref().map(|p| diff::diff(p, &run));
