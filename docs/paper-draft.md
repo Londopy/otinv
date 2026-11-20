@@ -16,13 +16,14 @@ have. We describe otinv, an offline tool that reads passive captures or
 Zeek/Malcolm logs from a control network and writes a one-page,
 plain-English "what to fix first" report, an asset inventory in the
 vocabulary of CISA's Cybersecurity Performance Goals (CPG) 2.0, and an
-appendix in which every statement cites the log lines and packets it came
-from. The analysis is deterministic and rule-based, so the same capture
+appendix in which every finding cites the log lines it came from and,
+when otinv ran Zeek on the capture itself, the packets behind its
+connection-level lines. The analysis is deterministic and rule-based, so the same capture
 always gives the same report and every rule can be read and edited. On a
 scripted lab network otinv inventories every device and flags every scripted
 problem. On 15 public ICS captures from CISA and the Zeek project it
 recovers device identity for eight industrial protocols and ties every
-connection-level finding to its packet. We propose a study measuring whether
+connection-level evidence line in the findings to a packet. We propose a study measuring whether
 operators with no security background can name the top actions after
 reading the one-page report.
 
@@ -51,7 +52,8 @@ choices follow from who reads its output:
 - the reader is an operator, not an analyst, so each finding is one plain
   sentence plus a concrete action, and the report is one page
 - the person running it is a volunteer who has to defend each statement,
-  so every finding cites its evidence down to the packet
+  so every finding cites its log lines, and its packets when otinv read the
+  capture itself
 - the data is critical infrastructure information, so nothing leaves the
   laptop, and a pseudonymized copy can be shared for review
 
@@ -112,9 +114,15 @@ come from a site file, or, without one, from regular polling.
 
 Evidence. Zeek logs say when and between which endpoints something
 happened, not which packet it was. When otinv runs Zeek itself, it reads the
-capture once more and matches each evidence line to the first packet with
-the same time stamp and endpoints, giving the frame number Wireshark shows.
-A CSV lists every evidence line with a Wireshark filter for it.
+capture once more and matches each evidence line that names a TCP or UDP
+connection to the first packet with the same time stamp and endpoints,
+giving the frame number Wireshark shows. For a conn.log line that is the
+connection's first packet; for a protocol log line it is the packet that
+carried the message. Lines without ports (DHCP, identity replies attributed
+from a payload address) keep only their log line, and so does everything
+from a log folder or a Malcolm export, where otinv never sees the packets.
+A CSV lists the evidence lines (up to 10,000 per finding) with a Wireshark
+filter for each.
 
 Reports. The one-page summary ranks actions by severity and by how many
 devices they touch, and caps the list at five. Sentences are generated from
@@ -151,9 +159,10 @@ from a host that never polls in the 4SICS capture, and DNP3 select/operate
 from a non-polling host in another. Every connection-level evidence line
 gets a packet number.
 
-Determinism. The same input always gives byte-identical findings; the test
-suite checks this, and that a Malcolm export of the lab gives the same
-report as the logs.
+Determinism. Given the same input and the same report time stamp, two runs
+produce byte-for-byte identical report files; the test suite checks this
+on the lab's bad hour, and checks that a Malcolm export of the lab gives
+the same findings and inventory as the logs.
 
 What this does not show. All of these captures are synthetic or from test
 suites. None comes from a working utility, and none was taken off a mirror
