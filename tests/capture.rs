@@ -79,9 +79,12 @@ fn lab_capture(folder: &str) -> (PathBuf, PathBuf) {
 fn stop_ends_zeek_and_writes_nothing() {
     let runner = runner();
     let (work, pcap) = lab_capture("otinv-capture-stop");
-    // early lands while docker is still creating the container, later while
-    // zeek is reading the capture (or just after it finished)
-    for delay in [300, 1500] {
+    // 0 stops just before zeek starts, on every runner. a native zeek finishes
+    // this small capture faster than any timed stop could land, so the timed
+    // one (while docker is still creating the container) runs on docker only;
+    // stopping a zeek mid-run is covered by runner.rs's stand-in zeek
+    let delays: &[u64] = if runner == "docker" { &[0, 300] } else { &[0] };
+    for &delay in delays {
         let out = work.join(format!("report-{delay}"));
         let mut job = Analysis::new(pcap.clone(), out.clone());
         job.runner = match runner.as_str() {
@@ -93,6 +96,10 @@ fn stop_ends_zeek_and_writes_nothing() {
         let started = Instant::now();
         let result = command::analyze(&job, &mut |e| {
             if matches!(e, Event::Note(ref n) if n.starts_with("running: ")) {
+                if delay == 0 {
+                    stop.store(true, Ordering::Relaxed);
+                    return;
+                }
                 let stop = stop.clone();
                 std::thread::spawn(move || {
                     std::thread::sleep(Duration::from_millis(delay));
