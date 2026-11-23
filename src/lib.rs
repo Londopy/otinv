@@ -6,6 +6,7 @@
 
 pub mod analyze;
 pub mod checks;
+pub mod command;
 pub mod config;
 pub mod diff;
 pub mod londopy;
