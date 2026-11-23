@@ -17,7 +17,8 @@ You'll get an acknowledgement within 72 hours, and an assessment within 7 days.
 
 | Version | Supported |
 |---|---|
-| 0.2.x (latest release) | Yes |
+| 0.3.x (latest release) | Yes |
+| 0.2.x | No |
 | 0.1.x | No |
 | main | Yes |
 
@@ -27,7 +28,7 @@ You'll get an acknowledgement within 72 hours, and an assessment within 7 days.
 
 - Credentials (user names, passwords, cookies, URLs) reaching any output, the run file, or memory past the log reader.
 - Real addresses, MACs, names or serials surviving `--pseudonymize`.
-- otinv sending any network traffic other than `otinv update`'s requests to GitHub when you run it, or the Docker runner starting a container with network access.
+- otinv sending any network traffic other than the update check's requests to GitHub (`otinv update`, or **Check for updates** in the window) when you ask for it, or the Docker runner starting a container with network access.
 - `otinv update` installing a file that doesn't match the release's `SHA256SUMS.txt`, or installing without asking.
 - Crafted logs, captures or `.londopy` files that crash otinv, exhaust memory, or write outside the output folder.
 - A finding that cites evidence that doesn't support it.
