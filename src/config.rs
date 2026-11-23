@@ -264,24 +264,36 @@ expected_writers = [
 # tools = "CLICK Programming Software 3.60"
 "#;
 
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Site {
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub name: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub local_networks: Vec<String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub expected_writers: Vec<String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub names: BTreeMap<String, String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub details: BTreeMap<String, crate::model::Details>,
     #[serde(skip)]
     pub ranges: Vec<Cidr>,
 }
 
 impl Site {
+    /// The site file as TOML, for saving after an edit. Checked by parsing it
+    /// back, so a saved file always loads.
+    pub fn to_toml(&self) -> Result<String> {
+        let body = toml::to_string(self).context("Writing the site file")?;
+        let text = format!(
+            "# otinv site file, saved by otinv-gui. `otinv site-template` shows every\n\
+             # field with an explanation. It names your devices: keep it private.\n\n{body}"
+        );
+        Self::parse(&text).context("The site file didn't read back")?;
+        Ok(text)
+    }
+
     pub fn load(path: &Path) -> Result<Self> {
         let text =
             std::fs::read_to_string(path).with_context(|| format!("Reading {}", path.display()))?;
@@ -379,5 +391,32 @@ mod tests {
         assert_eq!(d.details["10.0.1.10"].drawings, "P&ID 4");
         assert!(Site::parse("[details.'10.0.1.10']\ndrawing = 'x'").is_err());
         assert!(Site::parse("[details.well2]\ntools = 'x'").is_err());
+    }
+
+    #[test]
+    fn site_file_saves_and_loads_back() {
+        let mut s = Site::parse(
+            "name = 'Lab'\nlocal_networks = ['203.0.113.0/28']\n\
+             expected_writers = ['10.0.2.20']\n[names]\n'10.0.1.10' = 'Well \"2\" PLC'\n",
+        )
+        .unwrap();
+        s.details.insert(
+            "10.0.1.10".into(),
+            crate::model::Details {
+                location: "Pump house".into(),
+                tools: "CLICK 3.60".into(),
+                ..Default::default()
+            },
+        );
+        let back = Site::parse(&s.to_toml().unwrap()).unwrap();
+        assert_eq!(back.name, "Lab");
+        assert_eq!(back.local_networks, ["203.0.113.0/28"]);
+        assert_eq!(back.ranges.len(), 1);
+        assert_eq!(back.expected_writers, ["10.0.2.20"]);
+        assert_eq!(back.names["10.0.1.10"], "Well \"2\" PLC");
+        assert_eq!(back.details, s.details);
+        // a bad address never gets saved
+        s.expected_writers.push("not an address".into());
+        assert!(s.to_toml().is_err());
     }
 }
