@@ -2,7 +2,7 @@
 name = "otinv"
 version = "0.2.1"
 edition = "2021"
-rust-version = "1.88"
+rust-version = "1.95"
 authors = ["Londopy"]
 license = "MIT"
 description = "Turns passive captures from a small utility's control network into a plain-English asset inventory and a what-to-fix-first report."
@@ -24,6 +24,23 @@ zip = { version = "9", default-features = false, features = ["deflate"] }
 # HTTPS with rustls and its bundled roots (no native-tls, no OpenSSL)
 ureq = { version = "3", default-features = false, features = ["rustls"] }
 sha2 = "0.11"
+# the GUI only (otinv-gui): egui for the window, rfd for native file pickers.
+# neither talks to the network
+eframe = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "default_fonts", "glow", "wayland", "x11"], optional = true }
+rfd = { version = "0.18", optional = true }
+
+[features]
+default = ["gui"]
+gui = ["dep:eframe", "dep:rfd"]
+
+[[bin]]
+name = "otinv"
+path = "src/main.rs"
+
+[[bin]]
+name = "otinv-gui"
+path = "src/bin/otinv-gui/main.rs"
+required-features = ["gui"]
 
 [profile.release]
 lto = true
