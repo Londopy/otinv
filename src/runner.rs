@@ -13,8 +13,11 @@
 // package installed would run it; use a dedicated install or the docker image.
 
 use anyhow::{bail, Context, Result};
+use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Duration;
 
 pub const DEFAULT_IMAGE: &str = "otinv-zeek:local";
 
@@ -64,8 +67,18 @@ impl Plan {
     }
 }
 
+/// A child process that opens no console window. From the GUI, which has
+/// none, every zeek, wsl and docker call would otherwise flash one up.
+fn command(program: &str) -> Command {
+    #[allow(unused_mut)] // only windows sets a flag
+    let mut cmd = Command::new(program);
+    #[cfg(windows)]
+    std::os::windows::process::CommandExt::creation_flags(&mut cmd, 0x0800_0000);
+    cmd
+}
+
 fn works(program: &str, args: &[&str]) -> bool {
-    Command::new(program)
+    command(program)
         .args(args)
         .output()
         .map(|o| o.status.success())
@@ -94,11 +107,6 @@ pub fn detect(choice: RunnerChoice, zeek: Option<&Path>, image: &str) -> Result<
             .or_else(wsl)
             .or_else(|| docker().then(|| Runner::Docker(image.to_string()))),
     };
-    if let Some(Runner::Native(_, false) | Runner::Wsl(false)) = &found {
-        eprintln!(
-            "otinv: this zeek has no zkg packages, so the CISA ICSNPP parsers won't run; Modbus and DNP3 still work, EtherNet/IP identity and others won't"
-        );
-    }
     match found {
         Some(r) => Ok(r),
         None => bail!(
@@ -192,7 +200,9 @@ pub fn plan(runner: &Runner, pcap: &Path, logs: &Path) -> Result<Plan> {
     Ok(plan)
 }
 
-pub fn run(runner: &Runner, pcap: &Path, logs: &Path) -> Result<()> {
+/// Runs zeek on `pcap`, writing its logs into `logs`. Setting `stop` ends
+/// the run early: zeek (or its docker container) is killed and this fails.
+pub fn run(runner: &Runner, pcap: &Path, logs: &Path, stop: &AtomicBool) -> Result<()> {
     std::fs::create_dir_all(logs).with_context(|| format!("Creating {}", logs.display()))?;
     // logs from an earlier capture would otherwise be read as part of this one
     for entry in std::fs::read_dir(logs)?.flatten() {
@@ -201,21 +211,79 @@ pub fn run(runner: &Runner, pcap: &Path, logs: &Path) -> Result<()> {
             std::fs::remove_file(&path).with_context(|| format!("Removing {}", path.display()))?;
         }
     }
-    let p = plan(runner, pcap, logs)?;
-    eprintln!("running: {}", p.display());
-    let out = Command::new(&p.program)
+    let mut p = plan(runner, pcap, logs)?;
+    // killing the docker client leaves the container behind, so it gets a
+    // name of its own to remove it by
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    let container = format!("otinv-zeek-{}-{nanos}", std::process::id());
+    if matches!(runner, Runner::Docker(_)) {
+        p.args
+            .splice(1..1, ["--name".to_string(), container.clone()]);
+    }
+    if stop.load(Ordering::Relaxed) {
+        bail!("stopped before zeek started");
+    }
+    let mut child = command(&p.program)
         .args(&p.args)
         .current_dir(&p.cwd)
-        .output()
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .spawn()
         .with_context(|| format!("Starting {}", p.program))?;
-    if !out.status.success() {
-        bail!(
-            "zeek failed ({}):\n{}",
-            out.status,
-            String::from_utf8_lossy(&out.stderr).trim()
-        );
+    // read stderr as it comes, so a chatty zeek can't fill the pipe and stall
+    let mut pipe = child.stderr.take();
+    let stderr = std::thread::spawn(move || {
+        let mut bytes = Vec::new();
+        if let Some(e) = pipe.as_mut() {
+            let _ = e.read_to_end(&mut bytes);
+        }
+        String::from_utf8_lossy(&bytes).into_owned()
+    });
+    loop {
+        if let Some(status) = child.try_wait()? {
+            let text = stderr.join().unwrap_or_default();
+            if !status.success() {
+                bail!("zeek failed ({status}):\n{}", text.trim());
+            }
+            return Ok(());
+        }
+        if stop.load(Ordering::Relaxed) {
+            let _ = child.kill();
+            let _ = child.wait();
+            if matches!(runner, Runner::Docker(_)) {
+                remove_container(&container);
+            }
+            bail!("stopped before zeek finished");
+        }
+        std::thread::sleep(Duration::from_millis(100));
     }
-    Ok(())
+}
+
+/// Removes a container whatever state it's in. A stop can land while docker
+/// is still creating it, and the create can finish after the client is
+/// killed, so it has to stay gone for a second before this returns.
+fn remove_container(name: &str) {
+    let filter = format!("name=^/{name}$");
+    let mut gone = 0;
+    for _ in 0..40 {
+        let _ = command("docker").args(["rm", "-f", name]).output();
+        let left = command("docker")
+            .args(["ps", "-a", "-q", "--filter", &filter])
+            .output();
+        if left.is_ok_and(|o| o.stdout.trim_ascii().is_empty()) {
+            gone += 1;
+            if gone == 4 {
+                return;
+            }
+        } else {
+            gone = 0;
+        }
+        std::thread::sleep(Duration::from_millis(250));
+    }
 }
 
 #[cfg(test)]
@@ -268,5 +336,68 @@ mod tests {
             "{:?}",
             p.args
         );
+    }
+
+    // a stand-in zeek: a batch file on windows, a shell script elsewhere
+    fn fake_zeek(dir: &Path, windows: &str, unix: &str) -> PathBuf {
+        std::fs::create_dir_all(dir).unwrap();
+        if cfg!(windows) {
+            let p = dir.join("zeek.bat");
+            std::fs::write(&p, format!("@echo off\r\n{windows}\r\n")).unwrap();
+            p
+        } else {
+            let p = dir.join("zeek");
+            std::fs::write(&p, format!("#!/bin/sh\n{unix}\n")).unwrap();
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                std::fs::set_permissions(&p, std::fs::Permissions::from_mode(0o755)).unwrap();
+            }
+            p
+        }
+    }
+
+    #[test]
+    fn runs_zeek_reports_its_errors_and_stops_it() {
+        let dir = std::env::temp_dir().join(format!("otinv-runner-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let (pcap, logs) = (dir.join("a.pcap"), dir.join("logs"));
+        let stop = AtomicBool::new(false);
+
+        let ok = fake_zeek(&dir.join("ok"), "echo x> conn.log", "echo x > conn.log");
+        run(&Runner::Native(ok, false), &pcap, &logs, &stop).unwrap();
+        assert!(
+            logs.join("conn.log").is_file(),
+            "zeek ran in the log folder"
+        );
+
+        let bad = fake_zeek(
+            &dir.join("bad"),
+            "echo boom 1>&2\r\nexit /b 3",
+            "echo boom >&2; exit 3",
+        );
+        let err = run(&Runner::Native(bad, false), &pcap, &logs, &stop).unwrap_err();
+        assert!(err.to_string().contains("boom"), "{err}");
+
+        let slow = fake_zeek(
+            &dir.join("slow"),
+            "ping -n 30 127.0.0.1 > nul",
+            "exec sleep 30",
+        );
+        let started = std::time::Instant::now();
+        let err = std::thread::scope(|s| {
+            s.spawn(|| {
+                std::thread::sleep(Duration::from_millis(300));
+                stop.store(true, Ordering::Relaxed);
+            });
+            run(&Runner::Native(slow, false), &pcap, &logs, &stop).unwrap_err()
+        });
+        assert!(err.to_string().contains("stopped"), "{err}");
+        assert!(
+            started.elapsed() < Duration::from_secs(10),
+            "{:?}",
+            started.elapsed()
+        );
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }
