@@ -14,11 +14,11 @@
       - verifies it against the release's SHA256SUMS.txt and refuses on a mismatch
       - x64: runs the setup.exe silently (per-user, no admin prompt)
       - x86 / arm64, or -Msi: runs the .msi instead
-      - -Portable: no installer, just otinv.exe in a folder
+      - -Portable: no installer, just otinv.exe and otinv-gui.exe in a folder
 
-    otinv is a command-line tool, so there is no shortcut to it: you run it
-    from a terminal. The MSI puts it on your PATH; with the setup.exe and
-    -Portable, add -AddToPath for that.
+    otinv-gui.exe is the window; the setup.exe and the MSI add a Start menu
+    shortcut to it. otinv.exe is the command line: the MSI puts it on your
+    PATH; with the setup.exe and -Portable, add -AddToPath for that.
 
 .PARAMETER Version
     Install this version (for example 1.2.3) instead of the latest.
@@ -27,7 +27,7 @@
 .PARAMETER AllUsers
     Install for every user on this PC (asks for admin).
 .PARAMETER Portable
-    Skip the installer: put otinv.exe in -Dir.
+    Skip the installer: put otinv.exe and otinv-gui.exe in -Dir.
 .PARAMETER Dir
     Folder for -Portable. Default: %LOCALAPPDATA%\Programs\otinv
 .PARAMETER AddToPath
@@ -101,8 +101,11 @@ function Get-ChecksumTable {
 function Select-Download {
     param($Names, [string]$Arch, [bool]$WantMsi, [bool]$WantPortable)
     if ($WantPortable) {
-        $exe = $Names | Where-Object { $_ -like "*-$Arch-portable.exe" } | Select-Object -First 1
-        if ($exe) { return @{ Kind = 'exe'; Name = $exe } }
+        # otinv-v1.2.3-x64-portable.exe and otinv-gui-v1.2.3-x64-portable.exe
+        $exe = $Names | Where-Object { $_ -like "otinv-v*-$Arch-portable.exe" } | Select-Object -First 1
+        $gui = $Names | Where-Object { $_ -like "otinv-gui-v*-$Arch-portable.exe" } | Select-Object -First 1
+        # releases before 0.3.0 have no GUI; install the command line alone
+        if ($exe) { return @{ Kind = 'exe'; Name = $exe; Gui = $gui } }
         return $null
     }
     # the setup.exe is x64 only; other CPUs (and -Msi) get the msi
@@ -167,6 +170,8 @@ function Install-App {
 
     $sums = Get-ChecksumTable -Release $release
     $file = Save-Verified -Release $release -Name $pick.Name -Sums $sums
+    $guiFile = $null
+    if ($pick.Gui) { $guiFile = Save-Verified -Release $release -Name $pick.Gui -Sums $sums }
 
     switch ($pick.Kind) {
         'setup' {
@@ -192,12 +197,19 @@ function Install-App {
             New-Item -ItemType Directory -Force -Path $target | Out-Null
             $dest = Join-Path $target "$AppName.exe"
             Copy-Item -Path $file -Destination $dest -Force
-            Write-Host "Installed to $dest"
+            if ($guiFile) {
+                Copy-Item -Path $guiFile -Destination (Join-Path $target "$AppName-gui.exe") -Force
+                Remove-Item -Path $guiFile -Force -ErrorAction SilentlyContinue
+            } else {
+                Write-Host "This release has no otinv-gui; only the command line was installed."
+            }
+            Write-Host "Installed to $target"
             if ($AddToPath) { Add-UserPath -Folder $target }
         }
     }
     Remove-Item -Path $file -Force -ErrorAction SilentlyContinue
     Write-Host "$AppName $($release.tag_name) is installed."
+    if ($pick.Kind -ne 'exe') { Write-Host "Open it from the Start menu, or run $AppName-gui." }
     if ($AddToPath -or $pick.Kind -eq 'msi') {
         Write-Host "Open a new terminal and run: $AppName --help"
     } else {

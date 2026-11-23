@@ -13,6 +13,7 @@
 # Binary assets
 *.png binary
 *.ico binary
+*.rgba binary
 *.icns binary
 *.gif binary
 *.msi binary

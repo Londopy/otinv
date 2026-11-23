@@ -13,10 +13,10 @@
   londopy-style skill (dotnet tool, two extensions, EULA acceptance).
   XML comments can't contain two hyphens in a row, so the commands live there.
 
-  otinv is a command-line tool, so unlike the GUI apps' MSI this one has no
-  shortcuts, no startup entry and no "Launch" checkbox. Instead it puts the
-  install folder on PATH, on by default (the PATH fragment from wix-path.wxs,
-  in WiX v4+ syntax).
+  Two programs: otinv.exe (the command line) and otinv-gui.exe (the window).
+  A Start menu shortcut opens the window; no desktop shortcut, startup entry
+  or "Launch" checkbox. The install folder goes on PATH for the command line,
+  on by default (the PATH fragment from wix-path.wxs, in WiX v4+ syntax).
 
   Install scope: per-user by default (no UAC, %LOCALAPPDATA%\Programs\otinv,
   same folder as the Inno setup.exe). IT admins install machine-wide with:
@@ -56,7 +56,10 @@
     <!-- one msi file, no loose .cab next to it -->
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
 
-    <!-- Add/Remove Programs links. No ARPPRODUCTICON: otinv has no icon yet -->
+    <!-- the exes carry no icon resource; shortcuts and Add/Remove Programs
+         use this. A shortcut's icon id needs the file's extension -->
+    <Icon Id="otinv.ico" SourceFile="..\assets\otinv.ico" />
+    <Property Id="ARPPRODUCTICON" Value="otinv.ico" />
     <Property Id="ARPURLINFOABOUT" Value="https://github.com/Londopy/otinv" />
     <Property Id="ARPHELPLINK" Value="https://github.com/Londopy/otinv/issues" />
     <Property Id="ARPURLUPDATEINFO" Value="https://github.com/Londopy/otinv/releases" />
@@ -76,6 +79,8 @@
 
     <Feature Id="Main" Title="otinv" Level="1">
       <ComponentRef Id="MainExecutable" />
+      <ComponentRef Id="GuiExecutable" />
+      <ComponentRef Id="StartMenuShortcut" />
       <ComponentRef Id="InstallSourceMarker" />
       <ComponentRef Id="PathEntry" />
     </Feature>
@@ -93,6 +98,12 @@
                was cut off -->
           <RemoveFile Id="RemoveUpdateOld" Name="otinv.exe.old" On="uninstall" />
           <RemoveFile Id="RemoveUpdateNew" Name="otinv.exe.new" On="uninstall" />
+        </Component>
+
+        <Component Id="GuiExecutable">
+          <File Id="GuiExe" Source="$(var.BinDir)\otinv-gui.exe" KeyPath="yes" />
+          <RemoveFile Id="RemoveGuiUpdateOld" Name="otinv-gui.exe.old" On="uninstall" />
+          <RemoveFile Id="RemoveGuiUpdateNew" Name="otinv-gui.exe.new" On="uninstall" />
         </Component>
 
         <!-- install.ini tells `otinv update` an MSI installed this copy, so in a
@@ -117,6 +128,16 @@
                          Name="PathEntry" Type="integer" Value="1" KeyPath="yes" />
         </Component>
       </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Component Id="StartMenuShortcut">
+        <Shortcut Id="StartMenuShortcut" Name="otinv" Target="[#GuiExe]"
+                  WorkingDirectory="INSTALLFOLDER" Icon="otinv.ico"
+                  Description="Asset inventory and what-to-fix-first report from control network captures" />
+        <RegistryValue Root="HKMU" Key="Software\Londopy\otinv"
+                       Name="StartMenuShortcut" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
     </StandardDirectory>
 
     <!-- otinv keeps nothing in AppData, so there's no config folder to remove.

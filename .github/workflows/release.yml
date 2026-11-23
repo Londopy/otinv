@@ -8,10 +8,12 @@ name: Release
 # Produces, all listed in SHA256SUMS.txt:
 #   otinv-<ver>-setup-x64.exe                    Inno Setup installer (per-user, no UAC)
 #   otinv-<ver>-{x64,x86,arm64}.msi              MSI (per-user default, all-users option)
-#   otinv-v<ver>-{x64,x86,arm64}-portable.exe    single exe, no install
-#   otinv-v<ver>-portable.zip                    otinv/{x64,x86,arm64}/otinv.exe
-#   otinv-v<ver>-linux-x86_64.tar.gz             otinv-v<ver>-linux-x86_64/{otinv,LICENSE,README.md}
-#   otinv-v<ver>-linux-x86_64                    the same Linux binary on its own
+#   otinv-v<ver>-{x64,x86,arm64}-portable.exe      the command line, single exe
+#   otinv-gui-v<ver>-{x64,x86,arm64}-portable.exe  the window, single exe
+#   otinv-v<ver>-portable.zip                      otinv/{x64,x86,arm64}/{otinv,otinv-gui}.exe
+#   otinv-v<ver>-linux-x86_64.tar.gz               otinv-v<ver>-linux-x86_64/{otinv,otinv-gui,LICENSE,README.md}
+#   otinv-v<ver>-linux-x86_64                      the Linux command line on its own
+#   otinv-gui-v<ver>-linux-x86_64                  the Linux window on its own
 #   install.ps1, install.cmd                     script installs (irm ... | iex)
 # plus a .torrent and a magnet QR code (.magnet.png) per download, made by
 # scripts/release_notes.py, which also writes SHA256SUMS.txt and the notes.
@@ -108,11 +110,13 @@ jobs:
       - name: Build release binary
         run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Stage exe
+      - name: Stage exes
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path "stage\${{ matrix.label }}" | Out-Null
-          Copy-Item "target\${{ matrix.target }}\release\otinv.exe" "stage\${{ matrix.label }}\otinv.exe"
+          foreach ($exe in "otinv.exe", "otinv-gui.exe") {
+            Copy-Item "target\${{ matrix.target }}\release\$exe" "stage\${{ matrix.label }}\$exe"
+          }
 
       # The installer is x64 only; x86 and arm64 ship as MSIs and portable exes.
       - name: Install Inno Setup
@@ -203,14 +207,15 @@ jobs:
           set -euo pipefail
           name="otinv-${TAG}-linux-x86_64"
           mkdir -p "pkg/$name" out
-          cp target/release/otinv LICENSE README.md "pkg/$name/"
-          chmod 755 "pkg/$name/otinv"
+          cp target/release/otinv target/release/otinv-gui LICENSE README.md "pkg/$name/"
+          chmod 755 "pkg/$name/otinv" "pkg/$name/otinv-gui"
           # packed here because tar keeps the executable bit, which an artifact
           # upload drops; root ownership so the runner's user isn't in it
           tar -C pkg -czf "out/$name.tar.gz" --owner=0 --group=0 --numeric-owner "$name"
           # the bare binary as well: `otinv update` downloads it directly, so
           # otinv itself needs no tar or gzip code
           cp target/release/otinv "out/$name"
+          cp target/release/otinv-gui "out/otinv-gui-${TAG}-linux-x86_64"
           ls -l out
 
       - uses: actions/upload-artifact@v7
@@ -269,14 +274,15 @@ jobs:
           $root = "zip\otinv"
           foreach ($arch in "x64", "x86", "arm64") {
             New-Item -ItemType Directory -Force -Path "$root\$arch" | Out-Null
-            Copy-Item "artifacts\build-$arch\$arch\otinv.exe" "$root\$arch\"
+            Copy-Item "artifacts\build-$arch\$arch\otinv.exe", "artifacts\build-$arch\$arch\otinv-gui.exe" "$root\$arch\"
             # empty "portable" marker, so the zip has the same layout as every
             # Londopy app's (and what Scoop's pre_install makes); otinv itself
             # keeps no settings yet
             New-Item -ItemType File -Force -Path "$root\$arch\portable" | Out-Null
-            # the same exe on its own, for people who want one file and no
+            # the same exes on their own, for people who want one file and no
             # install; `otinv update` downloads these
             Copy-Item "artifacts\build-$arch\$arch\otinv.exe" "dist\otinv-$tag-$arch-portable.exe"
+            Copy-Item "artifacts\build-$arch\$arch\otinv-gui.exe" "dist\otinv-gui-$tag-$arch-portable.exe"
           }
           Compress-Archive -Path $root -DestinationPath "dist\otinv-$tag-portable.zip"
           Copy-Item artifacts\build-x64\*-setup-x64.exe dist\
