@@ -49,96 +49,209 @@ struct Asset {
     name: String,
 }
 
-pub fn run(check: bool, yes: bool) -> Result<()> {
+/// The programs a release ships. Each updates itself and its sibling, so the
+/// CLI and the GUI never end up on different versions.
+pub const PROGRAMS: [&str; 2] = ["otinv", "otinv-gui"];
+
+/// What GitHub says about the latest release, compared to this build.
+pub enum Check {
+    /// This build is the latest, or newer; the sentence says which.
+    Current(String),
+    Available(Offer),
+}
+
+/// A newer release, and what installing it here would mean.
+pub struct Offer {
+    tag: String,
+    /// "1.2.3"
+    pub version: String,
+    /// The release page.
+    pub page: String,
+    assets: Vec<String>,
+}
+
+/// Asks GitHub for the latest release. Only call this when the person asked.
+pub fn check() -> Result<Check> {
     let current = env!("CARGO_PKG_VERSION");
-    let agent = agent();
-    let release: Release = serde_json::from_slice(&get(&agent, LATEST_RELEASE, MAX_JSON, TIMEOUT)?)
-        .context("Reading GitHub's answer about the latest release")?;
-    let tag = release.tag_name.trim();
-    let latest = Version::parse(tag)
+    let release: Release =
+        serde_json::from_slice(&get(&agent(), LATEST_RELEASE, MAX_JSON, TIMEOUT)?)
+            .context("Reading GitHub's answer about the latest release")?;
+    let tag = release.tag_name.trim().to_string();
+    let latest = Version::parse(&tag)
         .with_context(|| format!("the latest release has a tag otinv can't read: {tag:?}"))?;
     let this = Version::parse(current).context("Reading this build's own version")?;
-    let new = tag.trim_start_matches(['v', 'V']);
-    match latest.cmp(&this) {
-        Ordering::Less => {
-            println!("otinv {current} is newer than the latest release ({new}).");
-            return Ok(());
-        }
-        Ordering::Equal => {
-            println!("otinv {current} is up to date.");
-            return Ok(());
-        }
-        Ordering::Greater => {}
-    }
-    let page = format!("{RELEASES}/tag/{tag}");
-    println!("otinv {current} is installed; {new} is available: {page}");
-    if check {
-        println!("Run `otinv update` to install it.");
-        return Ok(());
-    }
+    let version = tag.trim_start_matches(['v', 'V']).to_string();
+    Ok(match latest.cmp(&this) {
+        Ordering::Less => Check::Current(format!(
+            "otinv {current} is newer than the latest release ({version})."
+        )),
+        Ordering::Equal => Check::Current(format!("otinv {current} is up to date.")),
+        Ordering::Greater => Check::Available(Offer {
+            page: format!("{RELEASES}/tag/{tag}"),
+            tag,
+            version,
+            assets: release.assets.into_iter().map(|a| a.name).collect(),
+        }),
+    })
+}
 
-    let exe = std::env::current_exe().context("Finding otinv's own exe")?;
-    let dir = exe.parent().context("otinv's exe has no folder")?;
-    let (os, arch) = (std::env::consts::OS, std::env::consts::ARCH);
-    let names: Vec<&str> = release.assets.iter().map(|a| a.name.as_str()).collect();
-    let Some(asset) = binary_asset(tag, os, arch) else {
-        bail!("otinv releases have no build for {os}/{arch}; build {new} from source (see the README)");
-    };
-    if !can_replace_in(dir) {
-        let manual = manual_asset(tag, os, arch, installed_by(dir))
-            .filter(|n| names.contains(&n.as_str()))
-            .map(|n| format!("\n  {}", download_url(tag, &n)))
-            .unwrap_or_default();
-        bail!(
-            "otinv can't update itself in {}, which is read-only or an all-users install. \
-             Get {new} here:{manual}\n  {page}",
-            dir.display()
-        );
-    }
-    if !names.contains(&asset.as_str()) {
-        bail!("release {tag} has no {asset}; get {new} from {page}");
-    }
-    if !names.contains(&SUMS) {
-        bail!("release {tag} has no {SUMS}, so the download couldn't be checked; nothing was installed");
-    }
-    if !confirm(new, yes)? {
-        println!("Nothing changed.");
-        return Ok(());
-    }
+/// The exes to replace: the running one (as `program`), and its sibling
+/// program if it sits in the same folder.
+fn targets(exe: &Path, program: &str) -> Vec<(&'static str, PathBuf)> {
+    let dir = exe.parent().map(Path::to_path_buf).unwrap_or_default();
+    PROGRAMS
+        .iter()
+        .filter_map(|p| {
+            if *p == program {
+                Some((*p, exe.to_path_buf()))
+            } else {
+                let sibling = dir.join(format!("{p}{}", std::env::consts::EXE_SUFFIX));
+                // a renamed exe can carry its sibling's name; it's still itself
+                (sibling.is_file() && sibling != exe).then_some((*p, sibling))
+            }
+        })
+        .collect()
+}
 
-    let sums = String::from_utf8(get(&agent, &download_url(tag, SUMS), MAX_SUMS, TIMEOUT)?)
-        .with_context(|| format!("Reading {SUMS}"))?;
-    let expected = expected_hash(&sums, &asset)?;
-    println!("Downloading {asset} ...");
-    let bytes = get(
-        &agent,
-        &download_url(tag, &asset),
-        MAX_BINARY,
-        DOWNLOAD_TIMEOUT,
-    )?;
-    let actual = sha256_hex(&bytes);
-    if actual != expected {
-        bail!(
-            "{asset} doesn't match {SUMS} (expected SHA-256 {expected}, got {actual}); \
-             nothing was installed"
-        );
+impl Offer {
+    /// Downloads, checks and swaps in the new version of `program` (the
+    /// running exe) and of its sibling next to it. `say` gets a line per step.
+    pub fn install(&self, program: &str, say: &mut dyn FnMut(String)) -> Result<()> {
+        let (tag, new, page) = (&self.tag, &self.version, &self.page);
+        let exe = std::env::current_exe().context("Finding otinv's own exe")?;
+        let dir = exe.parent().context("otinv's exe has no folder")?;
+        let (os, arch) = (std::env::consts::OS, std::env::consts::ARCH);
+        let has = |n: &str| self.assets.iter().any(|a| a == n);
+        if !can_replace_in(dir) {
+            let manual = manual_asset(program, tag, os, arch, installed_by(dir))
+                .filter(|n| has(n))
+                .map(|n| format!("\n  {}", download_url(tag, &n)))
+                .unwrap_or_default();
+            bail!(
+                "otinv can't update itself in {}, which is read-only or an all-users install. \
+                 Get {new} here:{manual}\n  {page}",
+                dir.display()
+            );
+        }
+        let mut downloads = Vec::new();
+        for (p, path) in targets(&exe, program) {
+            let Some(asset) = binary_asset(p, tag, os, arch) else {
+                bail!(
+                    "otinv releases have no build for {os}/{arch}; build {new} from source \
+                     (see the README)"
+                );
+            };
+            if !has(&asset) {
+                bail!("release {tag} has no {asset}; get {new} from {page}");
+            }
+            downloads.push((asset, path));
+        }
+        if !has(SUMS) {
+            bail!(
+                "release {tag} has no {SUMS}, so the download couldn't be checked; nothing was \
+                 installed"
+            );
+        }
+        let agent = agent();
+        let sums = String::from_utf8(get(&agent, &download_url(tag, SUMS), MAX_SUMS, TIMEOUT)?)
+            .with_context(|| format!("Reading {SUMS}"))?;
+        // everything is downloaded and checked before anything is replaced
+        let mut checked = Vec::new();
+        for (asset, path) in downloads {
+            let expected = expected_hash(&sums, &asset)?;
+            say(format!("Downloading {asset} ..."));
+            let bytes = get(
+                &agent,
+                &download_url(tag, &asset),
+                MAX_BINARY,
+                DOWNLOAD_TIMEOUT,
+            )?;
+            let actual = sha256_hex(&bytes);
+            if actual != expected {
+                bail!(
+                    "{asset} doesn't match {SUMS} (expected SHA-256 {expected}, got {actual}); \
+                     nothing was installed"
+                );
+            }
+            say("SHA-256 verified.".to_string());
+            checked.push((path, bytes));
+        }
+        let mut swapped: Vec<PathBuf> = Vec::new();
+        for (path, bytes) in checked {
+            if let Err(e) = replace_exe(&path, &bytes) {
+                // both programs stay on one version: undo the ones already swapped
+                for done in &swapped {
+                    if let Err(undo) = restore(done) {
+                        say(format!(
+                            "Couldn't put back the old {}: {undo:#}",
+                            done.display()
+                        ));
+                    }
+                }
+                return Err(e);
+            }
+            swapped.push(path);
+        }
+        for path in swapped {
+            say(format!("Updated {} to {new}.", path.display()));
+        }
+        Ok(())
     }
-    println!("SHA-256 verified.");
-    replace_exe(&exe, &bytes)?;
-    println!("Updated {} to {new}.", exe.display());
+}
+
+/// Puts the `<exe>.old` an update left back in place of `exe`.
+fn restore(exe: &Path) -> Result<()> {
+    let aside = new_path(exe);
+    let _ = std::fs::remove_file(&aside);
+    rename(exe, &aside).with_context(|| format!("Moving {} aside", exe.display()))?;
+    rename(&old_path(exe), exe).with_context(|| format!("Restoring {}", exe.display()))?;
+    // a running exe can't be deleted yet; the next start sweeps it up
+    let _ = std::fs::remove_file(&aside);
     Ok(())
 }
 
+/// `otinv update`: the terminal version of check, ask, install.
+pub fn run(check_only: bool, yes: bool) -> Result<()> {
+    let offer = match check()? {
+        Check::Current(msg) => {
+            println!("{msg}");
+            return Ok(());
+        }
+        Check::Available(o) => o,
+    };
+    println!(
+        "otinv {} is installed; {} is available: {}",
+        env!("CARGO_PKG_VERSION"),
+        offer.version,
+        offer.page
+    );
+    if check_only {
+        println!("Run `otinv update` to install it.");
+        return Ok(());
+    }
+    if !confirm(&offer.version, yes)? {
+        println!("Nothing changed.");
+        return Ok(());
+    }
+    offer.install("otinv", &mut |line| println!("{line}"))
+}
 /// Deletes the `<exe>.old` an earlier `otinv update` left next to the exe.
 /// Runs first thing on every start; best effort and silent.
 pub fn remove_leftover() {
     if let Ok(exe) = std::env::current_exe() {
         remove_old(&exe);
+        // the sibling program's too: an update from the GUI swaps otinv.exe
+        // as well, and the command line may never be started again
+        let dir = exe.parent().map(Path::to_path_buf).unwrap_or_default();
+        for p in PROGRAMS {
+            remove_old(&dir.join(format!("{p}{}", std::env::consts::EXE_SUFFIX)));
+        }
     }
 }
 
 fn remove_old(exe: &Path) {
     let _ = std::fs::remove_file(old_path(exe));
+    let _ = std::fs::remove_file(new_path(exe));
 }
 
 fn agent() -> ureq::Agent {
@@ -381,13 +494,16 @@ fn windows_arch(arch: &str) -> Option<&'static str> {
 }
 
 /// The standalone binary the release workflow publishes for `os`/`arch`
-/// (`std::env::consts` names): otinv-v1.2.3-x64-portable.exe (or x86, arm64)
-/// on Windows, otinv-v1.2.3-linux-x86_64 on Linux. Linux gets the bare binary
+/// (`std::env::consts` names) and program: otinv-v1.2.3-x64-portable.exe (or
+/// x86, arm64, and otinv-gui-...) on Windows, otinv-v1.2.3-linux-x86_64 on Linux. Linux gets the bare binary
 /// rather than the tar.gz so that otinv needs no tar or gzip code.
-fn binary_asset(tag: &str, os: &str, arch: &str) -> Option<String> {
+fn binary_asset(program: &str, tag: &str, os: &str, arch: &str) -> Option<String> {
     match (os, arch) {
-        ("windows", _) => Some(format!("otinv-{tag}-{}-portable.exe", windows_arch(arch)?)),
-        ("linux", "x86_64") => Some(format!("otinv-{tag}-linux-x86_64")),
+        ("windows", _) => Some(format!(
+            "{program}-{tag}-{}-portable.exe",
+            windows_arch(arch)?
+        )),
+        ("linux", "x86_64") => Some(format!("{program}-{tag}-linux-x86_64")),
         _ => None,
     }
 }
@@ -425,7 +541,13 @@ fn ini_says_msi(ini: &str) -> bool {
 /// What to download by hand when otinv can't replace itself: the installer
 /// that put it there (the MSI for its architecture, or the setup.exe), the
 /// portable exe for any other Windows copy, the tar.gz on Linux.
-fn manual_asset(tag: &str, os: &str, arch: &str, installed: Installed) -> Option<String> {
+fn manual_asset(
+    program: &str,
+    tag: &str,
+    os: &str,
+    arch: &str,
+    installed: Installed,
+) -> Option<String> {
     let version = tag.trim_start_matches(['v', 'V']);
     match os {
         "windows" => {
@@ -434,7 +556,7 @@ fn manual_asset(tag: &str, os: &str, arch: &str, installed: Installed) -> Option
                 Installed::Msi => format!("otinv-{version}-{arch}.msi"),
                 // the setup.exe is x64 only
                 Installed::Setup => format!("otinv-{version}-setup-x64.exe"),
-                Installed::Other => format!("otinv-{tag}-{arch}-portable.exe"),
+                Installed::Other => format!("{program}-{tag}-{arch}-portable.exe"),
             })
         }
         "linux" if arch == "x86_64" => Some(format!("otinv-{tag}-linux-x86_64.tar.gz")),
@@ -740,7 +862,7 @@ mod tests {
     #[test]
     fn the_binary_matches_the_os_and_architecture() {
         let tag = "v1.2.3";
-        let asset = |os, arch| binary_asset(tag, os, arch);
+        let asset = |os, arch| binary_asset("otinv", tag, os, arch);
         assert_eq!(
             asset("windows", "x86_64").as_deref(),
             Some("otinv-v1.2.3-x64-portable.exe")
@@ -767,7 +889,7 @@ mod tests {
     fn read_only_copies_point_at_their_installer() {
         use Installed::*;
         let tag = "v1.2.3";
-        let manual = |os, arch, how| manual_asset(tag, os, arch, how);
+        let manual = |os, arch, how| manual_asset("otinv", tag, os, arch, how);
         assert_eq!(
             manual("windows", "x86_64", Msi).as_deref(),
             Some("otinv-1.2.3-x64.msi")
@@ -943,13 +1065,13 @@ mod tests {
             let portable = "otinv-$tag-$arch-portable.exe";
             assert!(workflow.contains(portable), "{portable}");
             assert_eq!(
-                binary_asset(tag, "windows", arch).unwrap(),
+                binary_asset("otinv", tag, "windows", arch).unwrap(),
                 portable.replace("$tag", tag).replace("$arch", label)
             );
             let msi = "otinv-$ver-${{ matrix.label }}.msi";
             assert!(workflow.contains(msi), "{msi}");
             assert_eq!(
-                manual_asset(tag, "windows", arch, Installed::Msi).unwrap(),
+                manual_asset("otinv", tag, "windows", arch, Installed::Msi).unwrap(),
                 msi.replace("$ver", "1.2.3")
                     .replace("${{ matrix.label }}", label)
             );
@@ -957,20 +1079,64 @@ mod tests {
         let linux = "otinv-${TAG}-linux-x86_64";
         assert!(workflow.contains(linux), "{linux}");
         assert_eq!(
-            binary_asset(tag, "linux", "x86_64").unwrap(),
+            binary_asset("otinv", tag, "linux", "x86_64").unwrap(),
             linux.replace("${TAG}", tag)
         );
         assert!(workflow.contains(r#"tar -C pkg -czf "out/$name.tar.gz""#));
         assert_eq!(
-            manual_asset(tag, "linux", "x86_64", Installed::Other).unwrap(),
+            manual_asset("otinv", tag, "linux", "x86_64", Installed::Other).unwrap(),
             format!("{}.tar.gz", linux.replace("${TAG}", tag))
         );
         let setup = "OutputBaseFilename=otinv-{#AppVersion}-setup-x64";
         assert!(inno.contains(setup), "{setup}");
         assert_eq!(
-            manual_asset(tag, "windows", "x86_64", Installed::Setup).unwrap(),
+            manual_asset("otinv", tag, "windows", "x86_64", Installed::Setup).unwrap(),
             "otinv-1.2.3-setup-x64.exe"
         );
         assert!(notes.contains(&format!("\"{SUMS}\"")));
+
+        // the GUI's own downloads, which it and its sibling update to
+        for (arch, label) in [("x86_64", "x64"), ("x86", "x86"), ("aarch64", "arm64")] {
+            let portable = "otinv-gui-$tag-$arch-portable.exe";
+            assert!(workflow.contains(portable), "{portable}");
+            assert_eq!(
+                binary_asset("otinv-gui", tag, "windows", arch).unwrap(),
+                portable.replace("$tag", tag).replace("$arch", label)
+            );
+        }
+        let gui_linux = "otinv-gui-${TAG}-linux-x86_64";
+        assert!(workflow.contains(gui_linux), "{gui_linux}");
+        assert_eq!(
+            binary_asset("otinv-gui", tag, "linux", "x86_64").unwrap(),
+            gui_linux.replace("${TAG}", tag)
+        );
+        assert!(inno.contains("#define GuiExeName   \"otinv-gui.exe\""));
+    }
+
+    #[test]
+    fn a_swapped_exe_can_be_put_back() {
+        let t = Scratch::new("restore");
+        let exe = t.exe("old version");
+        replace_exe(&exe, b"new version").unwrap();
+        assert_eq!(std::fs::read_to_string(&exe).unwrap(), "new version");
+        restore(&exe).unwrap();
+        assert_eq!(std::fs::read_to_string(&exe).unwrap(), "old version");
+        assert!(!old_path(&exe).exists() && !new_path(&exe).exists());
+    }
+
+    #[test]
+    fn updates_the_sibling_program_too() {
+        let t = Scratch::new("sibling");
+        let cli = t.exe("cli");
+        let sibling = cli.with_file_name(format!("otinv-gui{}", std::env::consts::EXE_SUFFIX));
+        // no GUI next to it: only the running exe
+        let only: Vec<&str> = targets(&cli, "otinv").iter().map(|(p, _)| *p).collect();
+        assert_eq!(only, ["otinv"]);
+        std::fs::write(&sibling, "gui").unwrap();
+        let both: Vec<(&str, PathBuf)> = targets(&cli, "otinv");
+        assert_eq!(both, [("otinv", cli.clone()), ("otinv-gui", sibling)]);
+        // the running exe keeps its own name, however it was renamed
+        let from_gui: Vec<&str> = targets(&cli, "otinv-gui").iter().map(|(p, _)| *p).collect();
+        assert_eq!(from_gui, ["otinv-gui"]);
     }
 }

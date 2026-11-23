@@ -51,12 +51,17 @@ KINDS = [
     (r"-x64\.msi$", "Windows 10/11, 64-bit", "MSI; per-user by default, all-users for IT; puts otinv on PATH"),
     (r"-x86\.msi$", "Windows, 32-bit", "MSI"),
     (r"-arm64\.msi$", "Windows on ARM", "MSI"),
-    (r"-x64-portable\.exe$", "Windows, 64-bit", "one exe, nothing to install"),
-    (r"-x86-portable\.exe$", "Windows, 32-bit", "one exe, nothing to install"),
-    (r"-arm64-portable\.exe$", "Windows on ARM", "one exe, nothing to install"),
-    (r"-portable\.zip$", "Windows (all three)", "the x64, x86 and arm64 builds in one zip"),
+    # the window and the command line each ship as their own portable exe
+    (r"^otinv-gui-.*-x64-portable\.exe$", "Windows, 64-bit", "the window (otinv-gui), one exe, nothing to install"),
+    (r"^otinv-gui-.*-x86-portable\.exe$", "Windows, 32-bit", "the window (otinv-gui), one exe"),
+    (r"^otinv-gui-.*-arm64-portable\.exe$", "Windows on ARM", "the window (otinv-gui), one exe"),
+    (r"-x64-portable\.exe$", "Windows, 64-bit", "the command line (otinv), one exe, nothing to install"),
+    (r"-x86-portable\.exe$", "Windows, 32-bit", "the command line (otinv), one exe"),
+    (r"-arm64-portable\.exe$", "Windows on ARM", "the command line (otinv), one exe"),
+    (r"-portable\.zip$", "Windows (all three)", "both programs, x64, x86 and arm64, in one zip"),
     # built on Ubuntu 22.04 (see release.yml), so that glibc or newer
-    (r"-linux-x86_64\.tar\.gz$", "Linux, x86_64", "the binary, LICENSE and README; glibc 2.35 or newer"),
+    (r"-linux-x86_64\.tar\.gz$", "Linux, x86_64", "otinv, otinv-gui, LICENSE and README; glibc 2.35 or newer"),
+    (r"^otinv-gui-.*-linux-x86_64$", "Linux, x86_64", "the bare GUI binary, which `otinv update` downloads"),
     (r"-linux-x86_64$", "Linux, x86_64", "the bare binary, which `otinv update` downloads; `chmod +x` it"),
     (r"^install\.ps1$", "Windows PowerShell", "script install, picks the right build and checks it"),
     (r"^install\.cmd$", "Windows", "double-click version of install.ps1"),
@@ -235,7 +240,8 @@ def main():
         return next((f for f, _, _ in sums if re.search(pattern, f)), None)
 
     setup, msi, portable_exe, zip_name = (find(r"-setup-x64\.exe$"), find(r"-x64\.msi$"),
-                                         find(r"-x64-portable\.exe$"), find(r"-portable\.zip$"))
+                                         find(r"^otinv-v.*-x64-portable\.exe$"), find(r"-portable\.zip$"))
+    portable_gui = find(r"^otinv-gui-.*-x64-portable\.exe$")
     linux_tar = find(r"-linux-x86_64\.tar\.gz$")
 
     # 3. the body
@@ -258,8 +264,8 @@ def main():
     out += ["## Install", ""]
     if setup:
         out += [f"**Installer (recommended):** download [`{setup}`]({download}/{setup}) and run it. It installs for "
-                "your user only, so there is no admin prompt. Tick **Add otinv to the PATH** to run `otinv` from any "
-                "terminal. The binaries are not code-signed: if SmartScreen says "
+                "your user only, so there is no admin prompt, and adds **otinv** to the Start menu. Tick **Add otinv to "
+                "the PATH** to run `otinv` from any terminal as well. The binaries are not code-signed: if SmartScreen says "
                 "\"Windows protected your PC\", click **More info**, then **Run anyway**.", ""]
     if msi:
         out += [f"**MSI:** [`{msi}`]({download}/{msi}) (also x86 and arm64). Per-user by default, and it puts otinv "
@@ -267,8 +273,10 @@ def main():
                 f"the PC (admin): `msiexec /i {msi} ALLUSERS=2 MSIINSTALLPERUSER=\"\"`.", ""]
     if portable_exe or zip_name:
         bits = []
+        if portable_gui:
+            bits.append(f"[`{portable_gui}`]({download}/{portable_gui}) is the window in one exe")
         if portable_exe:
-            bits.append(f"[`{portable_exe}`]({download}/{portable_exe}) is the whole program in one exe")
+            bits.append(f"[`{portable_exe}`]({download}/{portable_exe}) is the command line in one exe")
         if zip_name:
             bits.append(f"[`{zip_name}`]({download}/{zip_name}) has all three Windows builds")
         out += ["**Portable:** " + "; ".join(bits) + ".", ""]
@@ -280,9 +288,10 @@ def main():
             "```", ""]
     if linux_tar:
         folder = linux_tar[:-len(".tar.gz")]
-        out += [f"**Linux (x86_64):** [`{linux_tar}`]({download}/{linux_tar}) holds `otinv`, the LICENSE and the "
-                "README. It's built on Ubuntu 22.04, so it needs glibc 2.35 or newer:", "",
-                "```sh", f"tar xzf {linux_tar}", f"install -Dm755 {folder}/otinv ~/.local/bin/otinv", "```", ""]
+        out += [f"**Linux (x86_64):** [`{linux_tar}`]({download}/{linux_tar}) holds `otinv`, `otinv-gui`, the "
+                "LICENSE and the README. It's built on Ubuntu 22.04, so it needs glibc 2.35 or newer:", "",
+                "```sh", f"tar xzf {linux_tar}", f"install -Dm755 {folder}/otinv ~/.local/bin/otinv",
+                f"install -Dm755 {folder}/otinv-gui ~/.local/bin/otinv-gui", "```", ""]
     if a.scoop:
         # Londopy's apps share one bucket (Londopy/scoop-bucket); its Excavator picks up new releases
         out += ["**Scoop:**", "", "```powershell", "scoop bucket add londopy https://github.com/Londopy/scoop-bucket",

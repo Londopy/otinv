@@ -2,14 +2,15 @@
 ;
 ; Built by the release workflow with
 ;   ISCC.exe /DAppVersion=1.0.0 installer\otinv.iss
-; Run `cargo build --release` first so ..\target\release\otinv.exe exists.
+; Run `cargo build --release` first so ..\target\release\otinv.exe and
+; otinv-gui.exe exist.
 ;
 ; Output: installer\output\otinv-<version>-setup-x64.exe
 ;
-; otinv is a command-line tool, so this is leaner than the GUI apps' script:
-; no desktop icon, no Start menu shortcut to the exe (a console window would
-; open and close at once), no startup entry and no "launch after install".
-; The one integration is putting otinv on PATH, an opt-in task.
+; Two programs: otinv.exe, the command line, and otinv-gui.exe, the window.
+; The Start menu shortcut opens the window; a desktop shortcut and putting
+; otinv on PATH are opt-in tasks. No startup entry: otinv only runs when
+; someone opens it.
 
 #ifndef AppVersion
   #define AppVersion "0.0.0"
@@ -33,6 +34,7 @@
 #define AppPublisher "Londopy"
 #define AppURL       "https://github.com/Londopy/otinv"
 #define AppExeName   "otinv.exe"
+#define GuiExeName   "otinv-gui.exe"
 
 [Setup]
 ; Unique GUID - do NOT reuse this for a different app.
@@ -53,7 +55,6 @@ PrivilegesRequiredOverridesAllowed=dialog
 
 ; With lowest privileges {autopf} resolves to %LOCALAPPDATA%\Programs.
 DefaultDirName={autopf}\{#AppName}
-; The Start menu folder only holds the uninstall entry, so it can be skipped.
 DefaultGroupName={#AppName}
 AllowNoIcons=yes
 
@@ -61,7 +62,7 @@ LicenseFile=..\LICENSE
 
 OutputDir=output
 OutputBaseFilename=otinv-{#AppVersion}-setup-x64
-; No SetupIconFile: otinv has no icon yet, so setup shows Inno's own.
+SetupIconFile=..\assets\otinv.ico
 
 ; Compression
 Compression=lzma2/ultra64
@@ -85,7 +86,7 @@ CloseApplications=yes
 CloseApplicationsFilter=*.exe
 RestartApplications=no
 
-UninstallDisplayIcon={app}\{#AppExeName}
+UninstallDisplayIcon={app}\otinv.ico
 UninstallDisplayName={#AppName} {#AppVersion}
 VersionInfoVersion={#NumericVersion}
 VersionInfoDescription={#AppName} {#AppVersion} setup
@@ -96,6 +97,10 @@ VersionInfoCompany={#AppPublisher}
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
+Name: "desktopicon"; \
+  Description: "{cm:CreateDesktopIcon}"; \
+  GroupDescription: "{cm:AdditionalIcons}"; \
+  Flags: unchecked
 ; Opt-in, like every extra integration: puts {app} on the user's PATH (the
 ; machine's PATH for an all-users install), so any new terminal finds otinv.
 Name: "addtopath"; \
@@ -104,17 +109,29 @@ Name: "addtopath"; \
   Flags: unchecked
 
 [Files]
-; Main binary - built before running iscc
+; both binaries, built before running iscc
 Source: "{#BinDir}\{#AppExeName}"; \
+  DestDir: "{app}"; \
+  Flags: ignoreversion
+Source: "{#BinDir}\{#GuiExeName}"; \
+  DestDir: "{app}"; \
+  Flags: ignoreversion
+; the exes carry no icon resource; shortcuts and Add/Remove Programs use this
+Source: "..\assets\otinv.ico"; \
   DestDir: "{app}"; \
   Flags: ignoreversion
 
 [Icons]
-; Start menu: only the uninstall entry. otinv runs in a terminal, so a
-; shortcut to the exe would just flash a console window.
+; the shortcuts open the window; otinv.exe is for terminals and has none
+Name: "{group}\{#AppName}"; Filename: "{app}\{#GuiExeName}"; IconFilename: "{app}\otinv.ico"
+Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#GuiExeName}"; \
+  IconFilename: "{app}\otinv.ico"; Tasks: desktopicon
 Name: "{group}\{cm:UninstallProgram,{#AppName}}"; Filename: "{uninstallexe}"
 
-; No [Run] entry: there is no window to launch after install.
+[Run]
+Filename: "{app}\{#GuiExeName}"; \
+  Description: "{cm:LaunchProgram,{#AppName}}"; \
+  Flags: nowait postinstall skipifsilent unchecked
 
 ; No [UninstallRun] yet. The template's --londopy-unregister entry comes back
 ; when otinv registers the .londopy file type; today it only reads and writes
@@ -127,6 +144,8 @@ Name: "{group}\{cm:UninstallProgram,{#AppName}}"; Filename: "{uninstallexe}"
 ; AppData, so there's no {userappdata} folder to clean up.
 Type: files; Name: "{app}\{#AppExeName}.old"
 Type: files; Name: "{app}\{#AppExeName}.new"
+Type: files; Name: "{app}\{#GuiExeName}.old"
+Type: files; Name: "{app}\{#GuiExeName}.new"
 
 [Code]
 // PATH handling (from nexium): append {app} to the user's PATH, or the
