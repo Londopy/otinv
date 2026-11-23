@@ -8,6 +8,20 @@ what appears on its GitHub release page. Validated in CI by
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-23
+
+### Added
+
+- otinv-gui, a window for the same analysis: pick a capture, log folder or Malcolm export (or drop it on the window), see whether Zeek is ready, follow or stop the run, read what to fix first and the inventory, open the reports, compare two months, and edit the site file in a form. It follows the system's light or dark setting and works offline; its update check only runs when clicked.
+- Every Windows download has both programs: the setup.exe and MSIs add a Start menu entry that opens the window, the portable zip holds both, and each has its own portable exe. The Linux tar.gz has both, and `install.ps1 -Portable` installs both.
+- An icon, used by the installers, shortcuts and the window.
+- `otinv update` also updates otinv-gui when it sits in the same folder, and the other way round. If either can't be replaced, both stay on the old version.
+
+### Changed
+
+- `otinv diff` refuses to write into a folder that holds an analysis's reports, which it would otherwise have cleared.
+- Building otinv now needs Rust 1.95. `cargo build --no-default-features` builds the command line alone.
+
 ## [0.2.1] - 2026-11-20
 
 ### Added
@@ -80,7 +94,8 @@ what appears on its GitHub release page. Validated in CI by
 - A Capture workflow that runs otinv through real Zeek and the ICSNPP parsers on a generated lab capture.
 - Every release lists all its files in `SHA256SUMS.txt` and offers each download as a web-seeded torrent and magnet link.
 
-[Unreleased]: https://github.com/Londopy/otinv/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/Londopy/otinv/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/Londopy/otinv/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/Londopy/otinv/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/Londopy/otinv/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/Londopy/otinv/compare/v0.1.0...v0.1.1
