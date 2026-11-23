@@ -14,6 +14,9 @@ that output into an inventory an inspector will accept and a short list of
 fixes. otinv reads Zeek's logs and does that part. It runs offline on a laptop
 and only listens. It never sends a packet to the network it describes.
 
+It comes as two programs that do the same analysis: **otinv-gui**, a window
+for people who'd rather not use a terminal, and **otinv**, the command line.
+
 ```text
 $ otinv analyze capture-2026-11.pcap -o otinv-2026-11 --previous otinv-2026-10/run.londopy
 9 devices found, 9 problems (3 critical, 4 high, 2 medium).
@@ -29,6 +32,7 @@ WHAT TO FIX FIRST
 
 ## Features
 
+- **A window** (`otinv-gui`): pick a capture, a log folder or a Malcolm export, see whether Zeek is ready, follow the run, then read what to fix first and the inventory, open the full report, compare two months and fill in the site details in a form. It follows the system's light or dark setting.
 - **Asset inventory** (`inventory.csv`): IP, MAC, vendor, role, make/model, firmware and serial when the device announces them, protocols, first and last seen, and the computers seen configuring it. One row per device. Location, drawings, configuration backups and tools, which CISA's CPG 2.0 asks for and no capture shows, come from the site file.
 - **Device identity** from the traffic: EtherNet/IP List Identity, Modbus Device Identification, BACnet I-Am and device properties, S7comm component identification, OPC UA server descriptions, Omron FINS controller data, ROC Plus system configuration and C37.118 configuration frames.
 - **Role inference**: controllers (PLC/RTU), operator screens (HMI/SCADA), engineering workstations, network services and IT hosts. Each role comes with the log line that justifies it.
@@ -51,13 +55,16 @@ WHAT TO FIX FIRST
 
 **Windows:** download `otinv-<version>-setup-x64.exe` from the
 [latest release](https://github.com/Londopy/otinv/releases/latest) and run
-it. It installs for your user only, so there's no admin prompt. Tick **Add
-otinv to the PATH** to run `otinv` from any terminal. The release also has:
+it. It installs for your user only, so there's no admin prompt, and puts
+**otinv** in the Start menu, which opens the window. Tick **Add otinv to the
+PATH** to run `otinv` from any terminal too. The release also has:
 
-- MSIs for x64, x86 and arm64. They install per-user by default and put
-  otinv on the PATH. For a machine-wide install:
+- MSIs for x64, x86 and arm64. They install per-user by default, add the
+  Start menu entry and put otinv on the PATH. For a machine-wide install:
   `msiexec /i otinv-<version>-x64.msi ALLUSERS=2 MSIINSTALLPERUSER=""`.
-- Standalone portable exes, and a zip with all three builds.
+- Standalone portable exes (`otinv-gui-...-portable.exe` is the window,
+  `otinv-...-portable.exe` the command line), and a zip with both programs
+  for all three architectures.
 - A PowerShell script that picks the right build, checks it and installs it
   (`-AddToPath` also puts it on your PATH):
 
@@ -70,6 +77,7 @@ otinv to the PATH** to run `otinv` from any terminal. The release also has:
 ```sh
 tar xzf otinv-v<version>-linux-x86_64.tar.gz
 install -Dm755 otinv-v<version>-linux-x86_64/otinv ~/.local/bin/otinv
+install -Dm755 otinv-v<version>-linux-x86_64/otinv-gui ~/.local/bin/otinv-gui
 ```
 
 The binaries aren't code-signed, so SmartScreen may warn (**More info**,
@@ -82,9 +90,11 @@ then **Run anyway**). Each release lists every file's SHA-256 in
 it. It checks the download against the release's `SHA256SUMS.txt`, then
 replaces the running exe. `otinv update --check` only says whether there is
 a newer release. It never runs on its own. For an all-users install in
-Program Files, it prints the link to the new MSI or setup.exe instead.
+Program Files, it prints the link to the new MSI or setup.exe instead. In the
+window, **About**, **Check for updates** does the same. Either one updates
+both programs when they sit in the same folder.
 
-otinv itself is one self-contained binary. To analyze **captures** (rather
+Each program is one self-contained binary. To analyze **captures** (rather
 than Zeek logs you already have), it also needs Zeek with CISA's ICSNPP
 packages, which it finds on its own:
 
@@ -112,6 +122,31 @@ the project's Ubuntu packages on PATH, and the same Zeek inside WSL on a
 Windows runner. Each run analyzes a lab capture written by
 `tests/fixtures/make_lab_pcap.py` and checks every expected finding. The
 Docker run also checks 15 public ICS captures (see [Testing](#testing)).
+
+## The window
+
+Open **otinv** from the Start menu (or run `otinv-gui`). It has five pages:
+
+- **Analyze**: choose a capture, a folder of Zeek logs or a Malcolm export
+  (or drop it on the window), a report folder (one is suggested, named for
+  the month), and optionally a site file and last month's `run.londopy`. For
+  a capture it checks which Zeek it can use and says plainly what's missing.
+  The run goes in the background with its current step and time shown, and
+  **Stop** ends it (Zeek too) without writing any reports.
+- **Results**: what to fix first, the same list as `summary.txt`, then the
+  inventory. Buttons open the full HTML report, the report folder and the
+  copy for sharing. Any `run.londopy` can be opened here too.
+- **Compare months**: two saved runs in, new and missing devices, changed
+  firmware and new and fixed problems out, with the HTML comparison a click
+  away.
+- **Site details**: a form for `site.toml`: the utility's name, its own
+  address ranges, which computers may send control commands, and each
+  device's name, location, drawings, configuration backup and tools. Devices
+  from the last results can be added in one click. Unsaved details are never
+  thrown away without asking, closing the window included.
+- **About**: the version, links, and the update check.
+
+The window writes exactly the same report folder as the command line.
 
 ## Usage
 
@@ -296,9 +331,10 @@ finding names the CPG 2.0 goals it relates to.
 ## Network use
 
 The analysis never touches a network: `otinv analyze` and `otinv diff` read
-files and write files, and the Docker runner starts Zeek with
-`--network none`. The one command that goes online is `otinv update`, and
-only when you type it. It asks GitHub's API for the latest release, and if
+files and write files, the window does the same, and the Docker runner
+starts Zeek with `--network none`. The one thing that goes online is the
+update check, `otinv update` or **Check for updates** in the window, and
+only when you ask for it. It asks GitHub's API for the latest release, and if
 you say yes, downloads that release's exe and `SHA256SUMS.txt` from GitHub.
 It sends nothing about you or your data, and `otinv update --check` only
 asks. On a laptop that must stay offline, don't run it; download new
@@ -355,6 +391,10 @@ cargo build --release
 cargo test --all
 ```
 
+That builds both programs. `cargo build --release --no-default-features`
+builds only the command line, without the GUI's dependencies. On Linux the
+window needs a desktop session (X11 or Wayland); the command line doesn't.
+
 ## Testing
 
 `cargo test` runs everything that needs no Zeek. The test fixtures are
@@ -405,6 +445,8 @@ to do, and none of it can be done from code:
 ```text
 src/
   main.rs        command line
+  bin/otinv-gui/ the window (egui): one file per page
+  command.rs     analyze and diff, shared by both programs
   zeek.rs        zeek log reader (TSV + JSON); credential fields are dropped here
   analyze.rs     inventory, roles, communication map
   checks.rs      the findings
@@ -416,13 +458,14 @@ src/
   runner.rs      running zeek: native, WSL or Docker
   pcap.rs        packet numbers for evidence, read from the capture
   londopy.rs     .londopy files
-  update.rs      otinv update: GitHub Releases check, SHA-256, exe swap
+  update.rs      the update check: GitHub Releases, SHA-256, exe swap
 rules/default.toml   the built-in rules
 installer/           Inno Setup and WiX sources, install.ps1 and install.cmd
 scripts/release_notes.py   the release page, checksums and torrents
 scripts/fetch_public_traces.py   downloads the public test captures
 scripts/update_oui.py   rebuilds the built-in MAC vendor list
 data/oui.tsv         the IEEE MAC vendor registry otinv builds in
+assets/              the icon (scripts/make_icon.py draws it)
 docs/                volunteer guide and paper draft
 docker/zeek-icsnpp/  Zeek + ICSNPP image for the docker runner
 tests/               scenario, edge-case, capture and public-capture tests;

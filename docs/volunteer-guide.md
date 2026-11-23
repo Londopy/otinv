@@ -62,6 +62,12 @@ mergecap -w plant-week.pcapng plant_*.pcapng
 
 ## Running otinv
 
+If you'd rather not use a terminal, open **otinv** from the Start menu. Its
+Analyze page does everything below: pick the capture, pick a report folder,
+tick the box for a copy to share, and click Analyze. The Results page then
+shows what to fix first, and the Site details page is a form for the site
+file. The commands here do the same thing.
+
 ```sh
 otinv analyze plant-week.pcapng -o otinv-2026-11 --pseudonymize
 ```
