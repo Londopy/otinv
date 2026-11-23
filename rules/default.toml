@@ -348,7 +348,8 @@ why = """Commands that change setpoints or switch equipment on and off should \
 only come from your SCADA/HMI. Commands from anywhere else could be \
 maintenance, a misconfiguration, or an intruder."""
 action = """Find out who used this computer at that time and why. If it was \
-planned work, add the computer to expected_writers in site.toml so it isn't \
+planned work, list the computer as one that may send control commands \
+(Site details in the window, expected_writers in site.toml) so it isn't \
 flagged again. If nobody knows, treat it as an incident and call your \
 incident-response contacts."""
 cpg = "4.B Identify Adverse Events; 5.B Establish Incident Reporting Procedures"
